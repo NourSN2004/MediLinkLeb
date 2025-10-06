@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account – Medilink Preview</title>
+  <link rel="stylesheet" href="../../static/css/styles.css">
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="step-indicator">
+        <span class="step-number completed">1</span>
+        <span class="step-divider on"></span>
+        <span class="step-number active">2</span>
+      </div>
+
+      <h1 class="auth-title">Create your account</h1>
+      <p class="auth-subtitle">Enter your details to access the clinic platform.</p>
+
+      <form class="auth-form">
+        <div class="form-group">
+          <label class="form-label" for="email">Email</label>
+          <input type="email" id="email" placeholder="you@example.com" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input type="password" id="password" placeholder="********" required>
+          <p class="form-hint">Use at least 8 characters with a mix of letters & numbers.</p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="confirm">Confirm password</label>
+          <input type="password" id="confirm" placeholder="Re-enter password" required>
+        </div>
+
+        <button type="button" class="btn btn-primary btn-full">Create account</button>
+      </form>
+
+      <div class="auth-footer">
+        Already have an account?
+        <a href="#" class="auth-link">Sign in</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

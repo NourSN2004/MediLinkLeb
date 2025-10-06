@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Choose Role – Medilink Preview</title>
+  <!-- adjust path if needed -->
+  <link rel="stylesheet" href="../../static/css/styles.css">
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <svg width="42" height="42" viewBox="0 0 40 40" fill="none">
+          <rect width="40" height="40" rx="8" fill="url(#g)"/>
+          <path d="M12 20h16M20 12v16" stroke="white" stroke-width="3" stroke-linecap="round"/>
+          <defs><linearGradient id="g" x1="0" y1="0" x2="40" y2="40">
+            <stop offset="0%" stop-color="#0ea5a4"/><stop offset="100%" stop-color="#0284c7"/>
+          </linearGradient></defs>
+        </svg>
+      </div>
+
+      <div class="step-indicator">
+        <span class="step-number active">1</span>
+        <span class="step-divider"></span>
+        <span class="step-number">2</span>
+      </div>
+
+      <h1 class="auth-title">Choose your account type</h1>
+      <p class="auth-subtitle">Select how you'll use the medical platform.</p>
+
+      <form class="auth-form">
+        <div class="user-type-grid">
+          <label class="user-type-card">
+            <input type="radio" name="user_type" value="patient" required>
+            <div class="card">
+              <div class="card-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </div>
+              <h3>Patient</h3>
+              <p>Book visits, view prescriptions, receive reminders.</p>
+            </div>
+          </label>
+
+          <label class="user-type-card">
+            <input type="radio" name="user_type" value="doctor" required>
+            <div class="card">
+              <div class="card-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="14" rx="2"></rect>
+                  <path d="M8 10h8M12 6v8"></path>
+                </svg>
+              </div>
+              <h3>Doctor</h3>
+              <p>Manage appointments, patients, and secure messages.</p>
+            </div>
+          </label>
+
+          <label class="user-type-card">
+            <input type="radio" name="user_type" value="pharmacy" required>
+            <div class="card">
+              <div class="card-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 10h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8z"></path>
+                  <path d="M14 3H6a2 2 0 0 0-2 2v5h12V5a2 2 0 0 0-2-2z"></path>
+                </svg>
+              </div>
+              <h3>Pharmacy</h3>
+              <p>Process prescriptions and manage stock.</p>
+            </div>
+          </label>
+        </div>
+
+        <button type="button" class="btn btn-primary btn-full">Continue</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
