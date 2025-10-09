@@ -129,3 +129,18 @@ LOGOUT_REDIRECT_URL = "login"
 # DEFAULTS
 # ------------------------------------------------
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+
+# -----------------------------
+# MEDIA CONFIGURATION
+# -----------------------------
+import os
+
+MEDIA_URL = '/media/'  # URL prefix for accessing uploaded files
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Actual folder where uploads will be stored
+
+
+
+
+AUTH_USER_MODEL = 'accounts.User'
