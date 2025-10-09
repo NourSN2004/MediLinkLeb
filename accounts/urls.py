@@ -4,6 +4,8 @@ from . import views
 
 urlpatterns = [
     # signup flow
+    path('', views.doctor_home_preview, name='doctor_home'),
+
     path('signup/step1/', views.signup_step1, name='signup_step1'),
     path('signup/step2/', views.signup_step2, name='signup_step2'),
     path('verification-sent/', views.verification_sent, name='verification_sent'),
