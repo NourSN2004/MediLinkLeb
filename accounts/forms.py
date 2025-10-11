@@ -1,6 +1,7 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 USER_TYPE_CHOICES = [
     ('patient', 'Patient'),
@@ -9,6 +10,7 @@ USER_TYPE_CHOICES = [
     ('admin', 'Admin'),
 ]
 
+
 class UserTypeForm(forms.Form):
     user_type = forms.ChoiceField(
         choices=USER_TYPE_CHOICES,
@@ -16,16 +18,44 @@ class UserTypeForm(forms.Form):
         label='Choose your account type'
     )
 
-class SignupForm(UserCreationForm):
+
+class SignUpForm(forms.Form):
     email = forms.EmailField(required=True, label='Email')
+    first_name = forms.CharField(max_length=150, required=False, label='First Name')
+    last_name = forms.CharField(max_length=150, required=False, label='Last Name')
+    password1 = forms.CharField(label='Password', widget=forms.PasswordInput)
+    password2 = forms.CharField(label='Confirm Password', widget=forms.PasswordInput)
 
-    class Meta:
-        model = User
-        fields = ('email', 'username', 'password1', 'password2')
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError("This email is already registered.")
+        return email
 
-    def save(self, commit=True):
-        user = super().save(commit=False)
-        user.email = self.cleaned_data['email']
-        if commit:
-            user.save()
-        return user
+    def clean_password2(self):
+        password1 = self.cleaned_data.get("password1")
+        password2 = self.cleaned_data.get("password2")
+        if password1 and password2 and password1 != password2:
+            raise forms.ValidationError("Passwords don't match")
+        return password2
+
+
+class LoginForm(forms.Form):
+    email = forms.EmailField(label='Email')
+    password = forms.CharField(label='Password', widget=forms.PasswordInput)
+
+
+class ForgotPasswordForm(forms.Form):
+    email = forms.EmailField(label='Email')
+
+
+class ResetPasswordForm(forms.Form):
+    password1 = forms.CharField(label='New Password', widget=forms.PasswordInput)
+    password2 = forms.CharField(label='Confirm Password', widget=forms.PasswordInput)
+
+    def clean_password2(self):
+        password1 = self.cleaned_data.get("password1")
+        password2 = self.cleaned_data.get("password2")
+        if password1 and password2 and password1 != password2:
+            raise forms.ValidationError("Passwords don't match")
+        return password2

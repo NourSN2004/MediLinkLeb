@@ -21,7 +21,12 @@ class User(AbstractUser):
     name = models.CharField(max_length=120)          # Full name
     role = models.CharField(max_length=20, choices=Role.choices)
     phone_number = models.CharField(max_length=30, blank=True)
-
+    reset_password_token = models.CharField(max_length=100, blank=True, null=True)
+    reset_password_expires = models.DateTimeField(null=True, blank=True)
+    
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username']
+    
     def __str__(self):
         return f"{self.name} ({self.role})"
 

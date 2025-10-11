@@ -1,0 +1,55 @@
+{% extends 'accounts/base.html' %}
+{% load static %}
+
+{% block title %}Sign In{% endblock %}
+{% block extra_head %}<meta name="color-scheme" content="light dark">{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg width="42" height="42" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <rect width="40" height="40" rx="8" fill="url(#g)"/>
+        <path d="M12 20h16M20 12v16" stroke="white" stroke-width="3" stroke-linecap="round"/>
+        <defs><linearGradient id="g" x1="0" y1="0" x2="40" y2="40">
+          <stop offset="0%" stop-color="#0ea5a4"/><stop offset="100%" stop-color="#0284c7"/>
+        </linearGradient></defs>
+      </svg>
+    </div>
+
+    <h1 class="auth-title">Sign in</h1>
+    <p class="auth-subtitle">Welcome back! Enter your credentials to continue.</p>
+
+    <form class="auth-form" method="post" novalidate>
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label class="form-label" for="id_email">Email</label>
+        {{ form.email }}
+        {% if form.email.errors %}
+          <div class="form-error">{{ form.email.errors.0 }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="id_password">Password</label>
+        {{ form.password }}
+        {% if form.password.errors %}
+          <div class="form-error">{{ form.password.errors.0 }}</div>
+        {% endif %}
+      </div>
+
+      <div style="text-align: right; margin-top: -0.5rem; margin-bottom: 0.5rem;">
+        <a href="{% url 'forgot_password' %}" class="auth-link" style="font-size: 0.9rem;">Forgot password?</a>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full">Sign in</button>
+    </form>
+
+    <div class="auth-footer">
+      Don't have an account?
+      <a href="{% url 'signup_step1' %}" class="auth-link">Sign up</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
