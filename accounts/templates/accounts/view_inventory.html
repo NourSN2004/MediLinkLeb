@@ -1,0 +1,408 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Inventory - {{ pharmacy.name }}</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <style>
+    :root {
+      --sidebar-w: 260px;
+      --transition: .25s ease;
+      --brand1: #10b981;
+      --brand2: #059669;
+      --focus: rgba(16, 185, 129, .25);
+    }
+    html, body { height: 100%; margin: 0; background: #f8fafc; }
+    
+    .app {
+      height: 100vh; width: 100vw; display: grid;
+      grid-template-columns: var(--sidebar-w) 1fr;
+      transition: var(--transition); overflow: hidden;
+    }
+    
+    /* Sidebar */
+    .sidebar {
+      background: #fff; border-right: 1px solid var(--line);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .brand {
+      display: flex; align-items: center; gap: .6rem;
+      padding: 1rem; border-bottom: 1px solid var(--line);
+    }
+    .brand .logo {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, var(--brand1), var(--brand2));
+      color: #fff; font-weight: 800;
+    }
+    .brand h1 { font-size: 1.05rem; margin: 0; letter-spacing: .2px; }
+    
+    .side-section { padding: .75rem 1rem; }
+    .side-title {
+      font-size: .8rem; font-weight: 800;
+      color: var(--ink-dim); margin: .4rem 0 .3rem;
+    }
+    .nav { display: flex; flex-direction: column; gap: .4rem; }
+    .nav a {
+      display: flex; align-items: center; gap: .55rem;
+      padding: .7rem .6rem; border-radius: 10px;
+      color: var(--ink); text-decoration: none;
+      border: 1px solid transparent;
+    }
+    .nav a:hover { background: #f1f5f9; border-color: var(--line); }
+    .nav a.primary {
+      background: linear-gradient(135deg, var(--brand1), var(--brand2));
+      color: #fff;
+    }
+    
+    /* Main Content */
+    .main {
+      display: grid; grid-template-rows: auto 1fr;
+      height: 100%; overflow: hidden;
+    }
+    .topbar {
+      background: #fff; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; padding: .75rem 1rem;
+    }
+    .top-left { display: flex; align-items: center; gap: 1rem; }
+    .top-title { font-weight: 800; font-size: 1.05rem; }
+    .top-right { display: flex; align-items: center; gap: .9rem; }
+    .avatar {
+      width: 36px; height: 36px; border-radius: 999px;
+      display: grid; place-items: center; color: #fff;
+      background: linear-gradient(135deg, var(--brand1), var(--brand2));
+      font-weight: 800; font-size: .9rem;
+    }
+    
+    .content {
+      height: 100%; overflow: auto; padding: 1.2rem;
+      background: #f8fafc; display: flex; flex-direction: column; gap: 1.2rem;
+    }
+    
+    .panel {
+      background: #fff; border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, .05);
+    }
+    .panel .head {
+      padding: .9rem 1rem; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .panel .head h2 { font-size: 1rem; margin: 0; }
+    .panel .body { padding: .9rem 1rem; }
+    
+    /* Filters */
+    .filters-grid {
+      display: grid; grid-template-columns: 2fr 1fr 1fr auto;
+      gap: 1rem; align-items: end;
+    }
+    .filter-group { display: flex; flex-direction: column; gap: .45rem; }
+    .filter-group label {
+      font-size: .95rem; font-weight: 700; color: #0b1221;
+    }
+    .filter-group input,
+    .filter-group select {
+      padding: .9rem 1rem; font-size: 1rem;
+      color: var(--ink); background: #ffffff;
+      border: 1.5px solid var(--line-2); border-radius: 12px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .filter-group input:focus,
+    .filter-group select:focus {
+      outline: none; border-color: var(--brand2);
+      box-shadow: 0 0 0 4px var(--focus);
+    }
+    
+    .btn {
+      border: 0; padding: .95rem 1.15rem; border-radius: 12px;
+      font-weight: 800; cursor: pointer; display: inline-flex;
+      align-items: center; gap: .5rem; text-decoration: none;
+      transition: all .2s;
+    }
+    .btn-primary {
+      color: #ffffff;
+      background: linear-gradient(135deg, var(--brand1), var(--brand2));
+      box-shadow: 0 14px 22px rgba(16, 185, 129, .18);
+    }
+    .btn-primary:hover { filter: brightness(1.03); }
+    
+    /* Table */
+    .inventory-table {
+      width: 100%; border-collapse: collapse;
+    }
+    .inventory-table th {
+      background: #f1f5f9; padding: .8rem 1rem;
+      text-align: left; font-size: .8rem; font-weight: 800;
+      text-transform: uppercase; color: var(--ink-dim);
+      letter-spacing: .5px;
+    }
+    .inventory-table td {
+      padding: 1rem; border-bottom: 1px solid var(--line);
+      font-size: .95rem; color: var(--ink);
+    }
+    .inventory-table tr:last-child td { border-bottom: none; }
+    .inventory-table tbody tr {
+      transition: background-color .15s;
+    }
+    .inventory-table tbody tr:hover {
+      background: #f8fafc;
+    }
+    
+    .medicine-info {
+      display: flex; flex-direction: column; gap: .25rem;
+    }
+    .medicine-name {
+      font-weight: 800; color: var(--ink);
+    }
+    .medicine-details {
+      font-size: .85rem; color: var(--ink-dim);
+    }
+    
+    .pill {
+      padding: .2rem .55rem; border-radius: 999px;
+      border: 1px solid var(--line-2); font-size: .82rem;
+      color: #0b1221; background: #f8fafc; display: inline-block;
+      font-weight: 600;
+    }
+    .pill.green {
+      background: #d1fae5; color: #065f46;
+      border-color: #6ee7b7;
+    }
+    .pill.orange {
+      background: #fed7aa; color: #92400e;
+      border-color: #fbbf24;
+    }
+    .pill.red {
+      background: #fee2e2; color: #991b1b;
+      border-color: #fca5a5;
+    }
+    
+    .action-btns {
+      display: flex; gap: .5rem;
+    }
+    .icon-btn {
+      padding: .5rem; background: #f1f5f9;
+      border: none; border-radius: 8px; cursor: pointer;
+      transition: all .15s; display: inline-flex;
+      align-items: center; justify-content: center;
+    }
+    .icon-btn:hover {
+      background: #e8eef4;
+    }
+    .icon-btn.delete:hover {
+      background: #fee2e2; color: #dc2626;
+    }
+    
+    .muted {
+      color: var(--ink-dim); text-align: center;
+      padding: 1.2rem 0; border: 1px dashed var(--line-2);
+      border-radius: 12px; background: #f8fafc;
+    }
+    
+    .alert {
+      padding: .9rem 1rem; border-radius: 12px;
+      display: flex; align-items: flex-start; gap: .75rem;
+    }
+    .alert-success {
+      background: #d1fae5; color: #065f46;
+      border: 1px solid #6ee7b7;
+    }
+    
+    @media (max-width: 1020px) {
+      .filters-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">RX</div>
+        <h1>Medilink Pharmacy</h1>
+      </div>
+      <div class="side-section">
+        <div class="side-title">Quick Actions</div>
+        <nav class="nav">
+          <a href="{% url 'add_medicine' %}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="12" y1="18" x2="12" y2="12"></line>
+              <line x1="9" y1="15" x2="15" y2="15"></line>
+            </svg>
+            <span class="label">Add Medicine</span>
+          </a>
+          <a href="{% url 'update_stock' %}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+            <span class="label">Update Stock</span>
+          </a>
+          <a href="{% url 'view_inventory' %}" class="primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 7h16M4 12h16M4 17h10"></path>
+            </svg>
+            <span class="label">View Full Inventory</span>
+          </a>
+          <a href="{% url 'pharmacy_home' %}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            </svg>
+            <span class="label">Dashboard</span>
+          </a>
+        </nav>
+      </div>
+    </aside>
+
+    <section class="main">
+      <header class="topbar">
+        <div class="top-left">
+          <div class="top-title">Full Inventory</div>
+        </div>
+        <div class="top-right">
+          <div class="avatar">AY</div>
+          <div>
+            <div style="font-weight:800;">Ahmad Yateem</div>
+            <small style="color:var(--ink-dim);">Pharmacist</small>
+          </div>
+        </div>
+      </header>
+
+      <div class="content">
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              <span>{{ message }}</span>
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        <div class="panel">
+          <div class="head">
+            <h2>Search & Filter</h2>
+          </div>
+          <div class="body">
+            <form method="get" action="">
+              <div class="filters-grid">
+                <div class="filter-group">
+                  <label for="search">Search Medicine</label>
+                  <input type="text" id="search" name="search" placeholder="Search by name..." value="{{ search_query }}">
+                </div>
+                <div class="filter-group">
+                  <label for="status">Status Filter</label>
+                  <select id="status" name="status">
+                    <option value="">All Items</option>
+                    <option value="low_stock" {% if status_filter == 'low_stock' %}selected{% endif %}>Low Stock</option>
+                    <option value="expiring" {% if status_filter == 'expiring' %}selected{% endif %}>Expiring Soon</option>
+                    <option value="expired" {% if status_filter == 'expired' %}selected{% endif %}>Expired</option>
+                  </select>
+                </div>
+                <div class="filter-group">
+                  <label for="sort">Sort By</label>
+                  <select id="sort" name="sort">
+                    <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name (A-Z)</option>
+                    <option value="-name" {% if sort_by == '-name' %}selected{% endif %}>Name (Z-A)</option>
+                    <option value="quantity" {% if sort_by == 'quantity' %}selected{% endif %}>Qty (Low-High)</option>
+                    <option value="-quantity" {% if sort_by == '-quantity' %}selected{% endif %}>Qty (High-Low)</option>
+                    <option value="expiry_date" {% if sort_by == 'expiry_date' %}selected{% endif %}>Expiry (Soon-Late)</option>
+                  </select>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                  </svg>
+                  Apply
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="head">
+            <h2>Medicine Stock</h2>
+            <span style="color:var(--ink-dim);font-size:.9rem;">
+              {{ stock_items|length }} item{{ stock_items|length|pluralize }}
+            </span>
+          </div>
+          <div class="body">
+            {% if stock_items %}
+              <table class="inventory-table">
+                <thead>
+                  <tr>
+                    <th>Medicine</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Expiry Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for stock in stock_items %}
+                    <tr>
+                      <td>
+                        <div class="medicine-info">
+                          <div class="medicine-name">{{ stock.medicine.name }}</div>
+                          <div class="medicine-details">
+                            {{ stock.medicine.dosage_form }} • {{ stock.medicine.strength }}
+                          </div>
+                        </div>
+                      </td>
+                      <td>{{ stock.quantity }} units</td>
+                      <td>${{ stock.price }}</td>
+                      <td>{{ stock.expiry_date|date:"M d, Y" }}</td>
+                      <td>
+                        {% if stock.is_expired %}
+                          <span class="pill red">Expired</span>
+                        {% elif stock.is_expiring_soon %}
+                          <span class="pill orange">Expiring Soon</span>
+                        {% elif stock.is_low_stock %}
+                          <span class="pill orange">Low Stock</span>
+                        {% else %}
+                          <span class="pill green">In Stock</span>
+                        {% endif %}
+                      </td>
+                      <td>
+                        <div class="action-btns">
+                          <a href="{% url 'update_stock' %}" class="icon-btn" title="Edit">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                          </a>
+                          <form method="post" action="{% url 'delete_stock' stock.id %}" style="display: inline;" 
+                                onsubmit="return confirm('Are you sure you want to delete this stock entry?');">
+                            {% csrf_token %}
+                            <button type="submit" class="icon-btn delete" title="Delete">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              </svg>
+                            </button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            {% else %}
+              <p class="muted">No items found. Try adjusting your search or filters.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
