@@ -41,21 +41,34 @@ def signup_step1(request):
 
 
 def signup_step2(request):
-    """
-    Creates the user, logs them in, and shows 'verification sent'.
-    """
-    # Get user_type from session (set in step 1)
-    user_type = request.session.get('user_type', 'patient')
+    """Step 2: Create user account"""
+    user_type = request.session.get('user_type')
+    if not user_type:
+        messages.error(request, 'Please select an account type first.')
+        return redirect('signup_step1')
     
     if request.method == 'POST':
-        form = SignUpForm(request.POST, user_type=user_type)
+        form = SignUpForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            login(request, user)
-            return redirect('verification_sent')
+            user = AuthenticationService.signup_user(
+                email=form.cleaned_data['email'],
+                password=form.cleaned_data['password1'],
+                user_type=user_type,
+                first_name=form.cleaned_data.get('first_name', ''),
+                last_name=form.cleaned_data.get('last_name', '')
+            )
+
+            if user:
+                login(request, user)
+                AuthenticationService.send_verification_email(user)
+                # Clear user_type from session
+                request.session.pop('user_type', None)
+                return redirect('verification_sent')
+            else:
+                messages.error(request, 'Error creating account. Please try again.')
     else:
-        form = SignUpForm(user_type=user_type)
-    
+        form = SignUpForm()
+
     return render(request, 'accounts/signup_step2.html', {'form': form})
 
 
@@ -107,15 +120,26 @@ def doctor_home(request):
     """
     today = timezone.localdate()
     
-    # Check if user is actually a doctor
-    if not hasattr(request.user, 'doctor'):
+    # Check if user is actually a doctor by role
+    if request.user.role != User.Role.DOCTOR:
         return render(request, 'accounts/error.html', {
             'message': 'This page is for doctors only.'
         })
     
+    # Get or create Doctor profile if it doesn't exist
+    try:
+        doctor_profile = request.user.doctor
+    except Doctor.DoesNotExist:
+        # Auto-create Doctor profile if user has doctor role but no profile
+        doctor_profile = Doctor.objects.create(
+            doctor_id=request.user,
+            specialty='',
+            license_number=''
+        )
+    
     # Get actual appointments for this doctor
     appointments_qs = Appointment.objects.filter(
-        doctor=request.user.doctor,
+        doctor=doctor_profile,
         date_time__date=today,
         status=Appointment.Status.SCHEDULED
     ).select_related('patient__patient_id').order_by('date_time')
@@ -164,15 +188,29 @@ def patient_home(request):
     user = request.user
     today = timezone.localdate()
 
-    # Ensure this user is a patient
-    if not hasattr(user, 'patient'):
+    # Check if user is actually a patient by role
+    if user.role != User.Role.PATIENT:
         return render(request, "accounts/error.html", {
             "message": "This page is for patients only."
         })
 
+    # Get or create Patient profile if it doesn't exist
+    try:
+        patient_profile = user.patient
+    except Patient.DoesNotExist:
+        # Auto-create Patient profile if user has patient role but no profile
+        patient_profile = Patient.objects.create(
+            patient_id=user,
+            national_id='',
+            dob=None,
+            gender='',
+            blood_type='',
+            history_summary=''
+        )
+
     # Get today's appointments with doctor information
     today_appointments = Appointment.objects.filter(
-        patient=user.patient,
+        patient=patient_profile,
         date_time__date=today,
         status=Appointment.Status.SCHEDULED
     ).select_related('doctor__doctor_id').order_by('date_time')
@@ -193,6 +231,7 @@ def patient_home(request):
     }
 
     return render(request, "accounts/patient_home.html", context)
+
 
 def forgot_password(request):
     """Handle forgot password request"""

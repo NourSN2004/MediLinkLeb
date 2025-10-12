@@ -25,4 +25,6 @@ urlpatterns = [
     
     # Protected pages
     path('doctor/home/', views.doctor_home, name='doctor_home'),
+    path('patient/home/', views.patient_home, name='patient_home'),
+    
 ]
