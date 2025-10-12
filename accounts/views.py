@@ -132,7 +132,7 @@ def doctor_home(request):
         doctor_profile = Doctor.objects.create(
             doctor_id=request.user,
             specialty='',
-            license_number=''
+            license_number=f'TEMP-{request.user.id}'
         )
     
     # Get actual appointments for this doctor
@@ -248,7 +248,7 @@ def pharmacy_home(request):
         # Auto-create Pharmacy profile if user has pharmacy role but no profile
         pharmacy = Pharmacy.objects.create(
             pharmacy_id=request.user,
-            license_number='',
+            license_number=f'TEMP-{request.user.id}',
             address=''
         )
     
@@ -434,7 +434,7 @@ def add_medicine(request):
         # Auto-create Pharmacy profile if user has pharmacy role but no profile
         pharmacy = Pharmacy.objects.create(
             pharmacy_id=request.user,
-            license_number='',
+            license_number=f'TEMP-{request.user.id}',
             address=''
         )
     
@@ -497,7 +497,7 @@ def update_stock(request):
         # Auto-create Pharmacy profile if user has pharmacy role but no profile
         pharmacy = Pharmacy.objects.create(
             pharmacy_id=request.user,
-            license_number='',
+            license_number=f'TEMP-{request.user.id}',
             address=''
         )
     
@@ -545,7 +545,7 @@ def view_inventory(request):
         # Auto-create Pharmacy profile if user has pharmacy role but no profile
         pharmacy = Pharmacy.objects.create(
             pharmacy_id=request.user,
-            license_number='',
+            license_number=f'TEMP-{request.user.id}',
             address=''
         )
     
@@ -634,7 +634,7 @@ def delete_stock(request, stock_id):
         # Auto-create Pharmacy profile if user has pharmacy role but no profile
         pharmacy = Pharmacy.objects.create(
             pharmacy_id=request.user,
-            license_number='',
+            license_number=f'TEMP-{request.user.id}',
             address=''
         )
     
