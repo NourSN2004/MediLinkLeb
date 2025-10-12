@@ -10,6 +10,46 @@
     :root{ --sidebar-w:260px; --transition:.25s ease; }
     html,body{ height:100%; margin:0; background:#f8fafc; }
     
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.8;
+      }
+    }
+    
+    @keyframes shimmer {
+      0% {
+        background-position: -1000px 0;
+      }
+      100% {
+        background-position: 1000px 0;
+      }
+    }
+    
     .app{ 
       height:100vh; width:100vw; display:grid; 
       grid-template-columns:var(--sidebar-w) 1fr; 
@@ -26,71 +66,192 @@
     .brand{ 
       display:flex; align-items:center; gap:.6rem; 
       padding:1rem; border-bottom:1px solid var(--line); 
+      transition:var(--transition);
     }
     .brand .logo{ 
       width:36px; height:36px; border-radius:10px; 
       display:grid; place-items:center; 
       background:linear-gradient(135deg,#10b981,#059669); 
       color:#fff; font-weight:800; 
+      transition: transform 0.3s ease;
+      flex-shrink: 0;
     }
-    .brand h1{ font-size:1.05rem; margin:0; letter-spacing:.2px; }
+    .brand .logo:hover {
+      transform: rotate(360deg);
+    }
+    .brand h1{ 
+      font-size:1.05rem; margin:0; letter-spacing:.2px;
+      white-space: nowrap; overflow: hidden;
+      transition: opacity 0.2s ease, width 0.25s ease;
+    }
     
-    .side-section{ padding:.75rem 1rem; flex:1; overflow-y:auto; }
+    .side-section{ 
+      padding:.75rem 1rem; flex:1; overflow-y:auto;
+      transition: padding 0.25s ease;
+    }
     .side-title{ 
       font-size:.8rem; font-weight:800; 
       color:var(--ink-dim); margin:.4rem 0 .3rem; 
       text-transform:uppercase; letter-spacing:.5px;
+      white-space: nowrap; overflow: hidden;
+      transition: opacity 0.2s ease;
     }
     .nav{ display:flex; flex-direction:column; gap:.4rem; }
     .nav a{ 
       display:flex; align-items:center; gap:.55rem; 
       padding:.7rem .6rem; border-radius:10px; 
       color:var(--ink); text-decoration:none; 
-      border:1px solid transparent; transition:.15s;
+      border:1px solid transparent; 
+      transition:all .25s ease;
       font-weight:600;
+      font-size: 0.9375rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      position: relative;
+      overflow: hidden;
+      min-height: 42px;
+      box-sizing: border-box;
     }
-    .nav a:hover{ background:#f1f5f9; border-color:var(--line); }
-    .nav a.primary{ 
+    .nav a svg {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      transition: transform 0.3s ease;
+    }
+    .nav a:hover svg {
+      transform: scale(1.1);
+    }
+    .nav a span.label {
+      white-space: nowrap;
+      transition: opacity 0.2s ease;
+      line-height: 1.4;
+    }
+    .nav a:hover{ 
+      background:#f1f5f9; 
+      border-color:var(--line);
+      transform: translateX(4px);
+    }
+    .nav a.primary,
+    .nav a.active{ 
       background:linear-gradient(135deg,#10b981,#059669); 
-      color:#fff; font-weight:700;
+      color:#fff !important;
+      font-weight:700;
+      border-color: transparent;
     }
-    .nav a.primary:hover{ filter:brightness(1.05); }
+    .nav a.primary:hover,
+    .nav a.active:hover{ 
+      filter:brightness(1.05);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+      transform: translateX(4px);
+    }
     
-    .collapse-btn{ border-top:1px solid var(--line); padding:.6rem 1rem; }
+    .collapse-btn{ 
+      border-top:1px solid var(--line); 
+      padding:.6rem 1rem;
+      transition: padding 0.25s ease;
+    }
     .collapse-btn button{ 
       width:100%; border:1px solid var(--line); 
       background:#fff; color:var(--ink); padding:.6rem; 
       border-radius:10px; cursor:pointer; font-weight:700; 
-      transition:.15s;
+      transition:all .25s ease;
+      white-space:nowrap;
     }
-    .collapse-btn button:hover{ background:#f8fafc; }
+    .collapse-btn button:hover{ 
+      background:#f8fafc;
+      transform: scale(1.02);
+    }
     
-    .app.is-collapsed .brand h1, 
-    .app.is-collapsed .side-title, 
-    .app.is-collapsed .nav a span.label{ display:none; }
-    .app.is-collapsed .nav a{ justify-content:center; }
+    /* Collapsed State */
+    .app.is-collapsed .brand h1{ 
+      opacity: 0;
+      width: 0;
+    }
+    .app.is-collapsed .side-title{ 
+      opacity: 0;
+      height: 0;
+      margin: 0;
+    }
+    .app.is-collapsed .nav a span.label{ 
+      opacity: 0;
+      width: 0;
+    }
+    .app.is-collapsed .nav a{ 
+      justify-content:center; 
+      padding:.7rem;
+    }
+    .app.is-collapsed .nav a:hover {
+      transform: translateX(0) scale(1.05);
+    }
+    .app.is-collapsed .brand{ 
+      justify-content:center;
+      padding: 1rem 0.5rem;
+    }
+    .app.is-collapsed .side-section{ 
+      padding:.75rem .5rem;
+    }
+    .app.is-collapsed .collapse-btn {
+      padding: .6rem .5rem;
+    }
+    .app.is-collapsed .collapse-btn button {
+      padding: .6rem;
+      font-size: 0;
+      position: relative;
+    }
+    .app.is-collapsed .collapse-btn button::before {
+      content: "→";
+      font-size: 1.2rem;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+    
+    /* Hide user profile in collapsed state */
+    .app.is-collapsed .user-profile {
+      display: none;
+    }
 
     /* Main Content */
-    .main{ display:grid; grid-template-rows:auto 1fr; height:100%; overflow:hidden; }
+    .main{ 
+      display:grid; grid-template-rows:auto 1fr; 
+      height:100%; overflow:hidden;
+    }
     
     .topbar{ 
       background:#fff; border-bottom:1px solid var(--line); 
       display:flex; align-items:center; justify-content:space-between; 
-      gap:1rem; padding:.75rem 1.5rem; 
+      gap:1rem; padding:.75rem 1.5rem;
+      animation: fadeInUp 0.3s ease;
     }
     .top-left{ display:flex; align-items:center; gap:1rem; }
     .hamburger{ 
       display:none; width:38px; height:38px; 
       border-radius:10px; border:1px solid var(--line); 
-      background:#fff; cursor:pointer; 
+      background:#fff; cursor:pointer;
+      transition: all 0.3s ease;
     }
-    .top-title{ font-weight:800; font-size:1.1rem; color:var(--ink); }
-    .top-right{ display:flex; align-items:center; gap:.9rem; }
+    .hamburger:hover {
+      background: #f1f5f9;
+      transform: rotate(90deg);
+    }
+    .top-title{ 
+      font-weight:800; font-size:1.1rem; color:var(--ink);
+      animation: slideIn 0.4s ease;
+    }
+    .top-right{ 
+      display:flex; align-items:center; gap:.9rem;
+      animation: slideIn 0.5s ease;
+    }
     .avatar{ 
       width:36px; height:36px; border-radius:999px; 
       display:grid; place-items:center; color:#fff; 
       background:linear-gradient(135deg,#10b981,#059669); 
       font-weight:800; font-size:.9rem;
+      transition: transform 0.3s ease;
+      cursor: pointer;
+    }
+    .avatar:hover {
+      transform: scale(1.1) rotate(5deg);
     }
 
     /* Content Grid */
@@ -105,6 +266,7 @@
       border-radius:12px; 
       box-shadow:0 2px 4px rgba(0,0,0,.05); 
       display:flex; flex-direction:column; 
+      animation: fadeInUp 0.5s ease;
     }
     .panel .head{ 
       padding:.9rem 1rem; border-bottom:1px solid var(--line); 
@@ -119,12 +281,20 @@
       border:1px solid var(--line); border-radius:12px; 
       padding:.85rem .9rem; display:flex; 
       justify-content:space-between; align-items:center; 
-      gap:.5rem; background:#fff; transition:.15s; 
-      text-decoration:none; color:inherit; 
+      gap:.5rem; background:#fff; transition:all .3s ease; 
+      text-decoration:none; color:inherit;
+      animation: slideIn 0.4s ease forwards;
+      opacity: 0;
     }
+    .med-item:nth-child(1) { animation-delay: 0.1s; }
+    .med-item:nth-child(2) { animation-delay: 0.2s; }
+    .med-item:nth-child(3) { animation-delay: 0.3s; }
+    .med-item:nth-child(4) { animation-delay: 0.4s; }
+    .med-item:nth-child(5) { animation-delay: 0.5s; }
     .med-item:hover{ 
       box-shadow:0 0 0 4px rgba(16,185,129,.15); 
-      border-color:#10b981; 
+      border-color:#10b981;
+      transform: translateY(-2px);
     }
     .med-item .left{ display:flex; align-items:center; gap:.8rem; }
     .med-item .left svg{ color:#10b981; flex-shrink:0; }
@@ -137,31 +307,56 @@
       border:1px solid var(--line-2); font-size:.82rem; 
       color:#0b1221; background:#f8fafc; display:inline-block;
       font-weight:600; margin-right:.4rem;
+      transition: all 0.3s ease;
+      cursor: default;
+    }
+    .pill:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .pill.green{ 
       background:#d1fae5; color:#065f46; 
       border-color:#6ee7b7; 
     }
+    .pill.green:hover {
+      background:#a7f3d0;
+    }
     .pill.orange{ 
       background:#fed7aa; color:#92400e; 
       border-color:#fbbf24; 
     }
+    .pill.orange:hover {
+      background:#fbbf24;
+    }
     .pill.red{ 
       background:#fee2e2; color:#991b1b; 
       border-color:#fca5a5; 
+      animation: pulse 2s ease-in-out infinite;
+    }
+    .pill.red:hover {
+      background:#fca5a5;
+      animation: none;
     }
     
     /* Stats Info */
     .stat-info{ 
       display:flex; align-items:center; gap:.35rem; 
       color:var(--ink-dim); font-weight:700; font-size:.9rem;
+      transition: color 0.3s ease;
+    }
+    .stat-info svg {
+      transition: transform 0.3s ease;
+    }
+    .med-item:hover .stat-info svg {
+      transform: rotate(360deg);
     }
     
     /* Muted Empty State */
     .muted{ 
       color:var(--ink-dim); text-align:center; 
       padding:1.2rem 0; border:1px dashed var(--line-2); 
-      border-radius:12px; background:#f8fafc; 
+      border-radius:12px; background:#f8fafc;
+      animation: fadeInUp 0.6s ease;
     }
     
     /* Quick Stats Grid */
@@ -173,11 +368,26 @@
       background:#fff; border:1px solid var(--line);
       border-radius:12px; padding:1rem;
       display:flex; align-items:center; gap:.8rem;
+      transition: all 0.3s ease;
+      animation: fadeInUp 0.5s ease forwards;
+      opacity: 0;
+    }
+    .stat-box:nth-child(1) { animation-delay: 0.1s; }
+    .stat-box:nth-child(2) { animation-delay: 0.2s; }
+    .stat-box:nth-child(3) { animation-delay: 0.3s; }
+    .stat-box:nth-child(4) { animation-delay: 0.4s; }
+    .stat-box:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 12px rgba(0,0,0,.1);
     }
     .stat-box .icon{
       width:44px; height:44px; border-radius:10px;
       display:grid; place-items:center;
       background:linear-gradient(135deg,#d1fae5,#a7f3d0);
+      transition: transform 0.3s ease;
+    }
+    .stat-box:hover .icon {
+      transform: scale(1.1) rotate(5deg);
     }
     .stat-box .icon svg{ color:#059669; }
     .stat-box .info{ flex:1; }
@@ -195,7 +405,8 @@
       .hamburger{ display:block; } 
       .stats-grid{ grid-template-columns:repeat(2, 1fr); }
     }
-        .btn-ghost {
+    
+    .btn-ghost {
       border: 1px solid var(--line);
       background: #fff;
       color: var(--ink);
@@ -203,10 +414,30 @@
       border-radius: 10px;
       cursor: pointer;
       font-weight: 700;
-      transition: background .2s ease;
+      font-size: 0.875rem;
+      font-family: inherit;
+      transition: all .25s ease;
+      white-space: nowrap;
     }
     .btn-ghost:hover {
       background: #f1f5f9;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    /* Auth link styling */
+    .auth-link {
+      color: var(--brand1);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.875rem;
+      transition: all 0.3s ease;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+    }
+    .auth-link:hover {
+      background: rgba(16, 185, 129, 0.1);
+      transform: translateX(2px);
     }
   </style>
 </head>
@@ -251,7 +482,7 @@
         </nav>
       </div>
       
-      <div class="side-section" style="margin-top:auto; padding-top:0;">
+      <div class="side-section user-profile" style="margin-top:auto; padding-top:0;">
         <div class="side-title">Pharmacist</div>
         <div style="display:flex; align-items:center; gap:.6rem; padding:.6rem; background:#f8fafc; border-radius:10px;">
           <div class="avatar" style="width:32px; height:32px; font-size:.8rem;">AY</div>
@@ -280,9 +511,9 @@
           <div class="top-title">Pharmacy Dashboard</div>
         </div>
         <div class="top-right">
-          <div class="avatar">{{ pharmacy_name|first|upper }}</div>
+          <div class="avatar">AY</div>
           <div>
-            <div style="font-weight:800;">{{ pharmacy_name }}</div>
+            <div style="font-weight:800;">Ahmad Yateem</div>
             <small style="color:var(--ink-dim);">{{ today }}</small>
           </div>
           <form action="{% url 'logout' %}" method="post" style="margin-left:.5rem;">
@@ -405,12 +636,50 @@
   </div>
 
   <script>
-    const app=document.getElementById('appShell');
-    const btn=document.getElementById('toggleBtn');
-    const burger=document.getElementById('hamburger');
-    const toggle=()=>{app.classList.toggle('is-collapsed');btn.textContent=app.classList.contains('is-collapsed')?'Expand Sidebar':'Collapse Sidebar';};
-    if(btn) btn.addEventListener('click',toggle);
-    if(burger) burger.addEventListener('click',toggle);
+    const app = document.getElementById('appShell');
+    const btn = document.getElementById('toggleBtn');
+    const burger = document.getElementById('hamburger');
+    
+    function toggle() {
+      app.classList.toggle('is-collapsed');
+      const isCollapsed = app.classList.contains('is-collapsed');
+      
+      // Update button text only when not collapsed
+      if (!isCollapsed) {
+        btn.textContent = 'Collapse Sidebar';
+      } else {
+        btn.textContent = 'Expand';
+      }
+      
+      // Save state to localStorage
+      localStorage.setItem('sidebarCollapsed', isCollapsed);
+    }
+    
+    // Restore saved state on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedState = localStorage.getItem('sidebarCollapsed');
+      if (savedState === 'true') {
+        app.classList.add('is-collapsed');
+        btn.textContent = 'Expand';
+      }
+      
+      // Mark current page as active
+      const currentPath = window.location.pathname;
+      const navLinks = document.querySelectorAll('.nav a');
+      navLinks.forEach(link => {
+        const linkPath = new URL(link.href).pathname;
+        if (linkPath === currentPath) {
+          link.classList.add('active');
+          link.classList.remove('primary');
+        } else {
+          link.classList.remove('active');
+          link.classList.remove('primary');
+        }
+      });
+    });
+    
+    if (btn) btn.addEventListener('click', toggle);
+    if (burger) burger.addEventListener('click', toggle);
   </script>
 </body>
 </html> 

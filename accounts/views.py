@@ -4,7 +4,7 @@ from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import AuthenticationForm
 from django.shortcuts import render, redirect
 from django.utils import timezone
-from .models import Appointment, Patient, Doctor, User, Pharmacy, Stock
+from .models import Appointment, Patient, Doctor, User, Pharmacy, Stock, Medicine
 from .services import AuthenticationService
 from django.db.models import Q, Count, Sum
 from datetime import timedelta
@@ -132,7 +132,7 @@ def doctor_home(request):
         doctor_profile = Doctor.objects.create(
             doctor_id=request.user,
             specialty='',
-            license_number=''
+            license_number=None
         )
     
     # Get actual appointments for this doctor
@@ -248,7 +248,7 @@ def pharmacy_home(request):
         # Auto-create Pharmacy profile if user has pharmacy role but no profile
         pharmacy = Pharmacy.objects.create(
             pharmacy_id=request.user,
-            license_number='',
+            license_number=None,
             address=''
         )
     
@@ -434,7 +434,7 @@ def add_medicine(request):
         # Auto-create Pharmacy profile if user has pharmacy role but no profile
         pharmacy = Pharmacy.objects.create(
             pharmacy_id=request.user,
-            license_number='',
+            license_number=None,
             address=''
         )
     
@@ -497,12 +497,15 @@ def update_stock(request):
         # Auto-create Pharmacy profile if user has pharmacy role but no profile
         pharmacy = Pharmacy.objects.create(
             pharmacy_id=request.user,
-            license_number='',
+            license_number=None,
             address=''
         )
     
     # Get all stocks for this pharmacy
     stocks = Stock.objects.filter(pharmacy=pharmacy).select_related('medicine').order_by('medicine__name')
+    
+    # Get all available medicines (for adding new stock)
+    all_medicines = Medicine.objects.all().order_by('name')
     
     if request.method == 'POST':
         # Handle bulk update
@@ -524,7 +527,9 @@ def update_stock(request):
         return redirect('pharmacy_home')
     
     return render(request, 'accounts/update_stock.html', {
-        'stocks': stocks,
+        'stock_items': stocks,  # Template expects 'stock_items'
+        'stocks': stocks,  # For backward compatibility
+        'all_medicines': all_medicines,
         'pharmacy_name': pharmacy.pharmacy_id.name,
         'pharmacist_name': 'Ahmad Yateem',
     })
@@ -545,7 +550,7 @@ def view_inventory(request):
         # Auto-create Pharmacy profile if user has pharmacy role but no profile
         pharmacy = Pharmacy.objects.create(
             pharmacy_id=request.user,
-            license_number='',
+            license_number=None,
             address=''
         )
     
@@ -609,7 +614,8 @@ def view_inventory(request):
         })
     
     return render(request, 'accounts/view_inventory.html', {
-        'stocks': stock_list,
+        'stock_items': stock_list,
+        'stocks': stock_list,  # For backward compatibility
         'search_query': search_query,
         'status_filter': status_filter,
         'sort_by': sort_by,
@@ -634,7 +640,7 @@ def delete_stock(request, stock_id):
         # Auto-create Pharmacy profile if user has pharmacy role but no profile
         pharmacy = Pharmacy.objects.create(
             pharmacy_id=request.user,
-            license_number='',
+            license_number=None,
             address=''
         )
     

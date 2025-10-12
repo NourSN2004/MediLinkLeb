@@ -39,7 +39,7 @@ class Doctor(models.Model):
         User, on_delete=models.CASCADE, primary_key=True, related_name="doctor"
     )
     specialty = models.CharField(max_length=120, blank=True)
-    license_number = models.CharField(max_length=80, unique=True, blank=True)
+    license_number = models.CharField(max_length=80, unique=True, blank=True, null=True)
 
     def __str__(self):
         return f"Dr. {self.doctor_id.name}"
@@ -70,7 +70,7 @@ class Pharmacy(models.Model):
         User, on_delete=models.CASCADE, primary_key=True, related_name="pharmacy"
     )
     address = models.CharField(max_length=255, blank=True)
-    license_number = models.CharField(max_length=80, unique=True, blank=True)
+    license_number = models.CharField(max_length=80, unique=True, blank=True, null=True)
 
     def __str__(self):
         return self.pharmacy_id.name
