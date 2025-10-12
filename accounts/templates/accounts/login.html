@@ -23,7 +23,7 @@
     margin: 0 auto;
     background: #ffffff;
     border-radius: 24px;
-    padding: 3.5rem 2.5rem;
+    padding: 2rem 2.5rem;
     border: none !important;
     box-shadow: 
       0 20px 60px rgba(14, 165, 164, 0.12),
@@ -43,10 +43,6 @@
     }
   }
 
-  @keyframes gradientShift {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-  }
   .auth-logo {
     width: 56px;
     height: 56px;
@@ -105,6 +101,7 @@
       opacity: 0;
     }
   }
+
   .auth-title {
     font-size: 1.75rem;
     font-weight: 800;
@@ -124,6 +121,7 @@
     margin-bottom: 1.5rem;
     line-height: 1.6;
   }
+
   .login-alert {
     display: flex;
     align-items: center;
@@ -187,10 +185,6 @@
     border-color: #94a3b8;
   }
 
-  .form-group {
-    position: relative;
-  }
-
   .form-group input::placeholder {
     color: #94a3b8;
     transition: opacity 0.2s;
@@ -198,6 +192,25 @@
 
   .form-group input:focus::placeholder {
     opacity: 0.5;
+  }
+
+  .forgot-password {
+    text-align: right;
+    margin-top: -0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .forgot-password a {
+    font-size: 0.85rem;
+    color: #0ea5a4;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+
+  .forgot-password a:hover {
+    color: #0284c7;
+    text-decoration: underline;
   }
 
   .btn-primary {
@@ -292,6 +305,7 @@
     transition: all 0.2s;
     position: relative;
   }
+
   .auth-link::after {
     content: '';
     position: absolute;
@@ -311,22 +325,19 @@
     color: #0284c7;
   }
 
+  .form-error {
+    color: #dc2626;
+    font-size: 0.85rem;
+  }
+
   @media (max-width: 640px) {
     .auth-card {
       padding: 2rem 1.5rem;
+      max-width: 90%;
     }
 
     .auth-title {
       font-size: 1.5rem;
-    }
-
-    .trust-badges {
-      gap: 1rem;
-    }
-
-    .auth-container::before,
-    .auth-container::after {
-      display: none;
     }
   }
 </style>
@@ -392,6 +403,10 @@
         {% if form.password.errors %}
           <div class="form-error" style="margin-top: 0.5rem;">{{ form.password.errors.0 }}</div>
         {% endif %}
+      </div>
+
+      <div class="forgot-password">
+        <a href="{% url 'forgot_password' %}">Forgot password?</a>
       </div>
 
       <button type="submit" class="btn btn-primary btn-full">
