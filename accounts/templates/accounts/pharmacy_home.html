@@ -195,6 +195,19 @@
       .hamburger{ display:block; } 
       .stats-grid{ grid-template-columns:repeat(2, 1fr); }
     }
+        .btn-ghost {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      padding: .45rem .7rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: background .2s ease;
+    }
+    .btn-ghost:hover {
+      background: #f1f5f9;
+    }
   </style>
 </head>
 <body>
@@ -267,11 +280,15 @@
           <div class="top-title">Pharmacy Dashboard</div>
         </div>
         <div class="top-right">
-          <div class="avatar">AY</div>
+          <div class="avatar">{{ pharmacy_name|first|upper }}</div>
           <div>
-            <div style="font-weight:800;">Ahmad Yateem</div>
+            <div style="font-weight:800;">{{ pharmacy_name }}</div>
             <small style="color:var(--ink-dim);">{{ today }}</small>
           </div>
+          <form action="{% url 'logout' %}" method="post" style="margin-left:.5rem;">
+            {% csrf_token %}
+            <button type="submit" class="btn-ghost">Sign out</button>
+          </form>
         </div>
       </header>
 
