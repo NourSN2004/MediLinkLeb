@@ -26,5 +26,13 @@ urlpatterns = [
     # Protected pages
     path('doctor/home/', views.doctor_home, name='doctor_home'),
     path('patient/home/', views.patient_home, name='patient_home'),
+    path('pharmacy/home/', views.pharmacy_home, name='pharmacy_home'),
+    
+    # Pharmacy dashboard & management
+    path('pharmacy/home/', views.pharmacy_home, name='pharmacy_home'),
+    path('pharmacy/add-medicine/', views.add_medicine, name='add_medicine'),
+    path('pharmacy/update-stock/', views.update_stock, name='update_stock'),
+    path('pharmacy/inventory/', views.view_inventory, name='view_inventory'),
+    path('pharmacy/delete-stock/<int:stock_id>/', views.delete_stock, name='delete_stock'),
     
 ]

@@ -4,9 +4,11 @@ from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import AuthenticationForm
 from django.shortcuts import render, redirect
 from django.utils import timezone
-from .models import Appointment, Patient, Doctor, User
+from .models import Appointment, Patient, Doctor, User, Pharmacy, Stock
 from .services import AuthenticationService
-from .forms import SignUpForm, LoginForm, ForgotPasswordForm, ResetPasswordForm
+from django.db.models import Q, Count, Sum
+from datetime import timedelta
+from .forms import SignUpForm, ForgotPasswordForm, ResetPasswordForm, MedicineForm, StockForm, NewMedicineStockForm, StockUpdateForm
 
 
 def home_redirect(request):
@@ -18,10 +20,7 @@ def home_redirect(request):
             elif request.user.role == User.Role.PATIENT:
                 return redirect('patient_home')
             elif request.user.role == User.Role.PHARMACY:
-                # You'll create this later for Sprint 2+
-                return render(request, 'accounts/error.html', {
-                    'message': 'Pharmacy dashboard coming soon!'
-                })
+                return redirect('pharmacy_home')
         # If user has no role, send to login
         return redirect('login')
     return redirect('signup_step1')
@@ -100,8 +99,7 @@ def custom_login(request):
                     elif user.role == User.Role.PATIENT:
                         return redirect('patient_home')
                     elif user.role == User.Role.PHARMACY:
-                        messages.info(request, 'Pharmacy dashboard coming soon!')
-                        return redirect('login')
+                        return redirect('pharmacy_home')
                 
                 # Default fallback
                 return redirect('home_redirect')
@@ -232,6 +230,423 @@ def patient_home(request):
 
     return render(request, "accounts/patient_home.html", context)
 
+@login_required
+def pharmacy_home(request):
+    """
+    Renders the pharmacy dashboard with inventory management features.
+    Shows inventory summary, critical medicines, and quick actions.
+    """
+    # Ensure user is a pharmacy
+    if request.user.role != User.Role.PHARMACY:
+        return render(request, 'accounts/error.html', {
+            'message': 'This page is for pharmacies only.'
+        })
+    
+    try:
+        pharmacy = request.user.pharmacy
+    except Pharmacy.DoesNotExist:
+        # Auto-create Pharmacy profile if user has pharmacy role but no profile
+        pharmacy = Pharmacy.objects.create(
+            pharmacy_id=request.user,
+            license_number='',
+            address=''
+        )
+    
+    today = timezone.localdate()
+    
+    # Get all stocks for this pharmacy
+    stocks = Stock.objects.filter(pharmacy=pharmacy).select_related('medicine')
+    
+    # Calculate inventory metrics
+    total_medicines = stocks.values('medicine').distinct().count()
+    total_stock_quantity = stocks.aggregate(total=Sum('quantity'))['total'] or 0
+    
+    # Low stock threshold (you can make this configurable)
+    LOW_STOCK_THRESHOLD = 10
+    low_stock_count = stocks.filter(quantity__lte=LOW_STOCK_THRESHOLD).values('medicine').distinct().count()
+    
+    # Expiry alerts - expired or expiring within 30 days
+    expiry_threshold = today + timedelta(days=30)
+    expiring_stocks = stocks.filter(
+        Q(expiry_date__lte=expiry_threshold) & Q(expiry_date__gte=today)
+    ).values('medicine').distinct().count()
+    
+    expired_count = stocks.filter(expiry_date__lt=today).values('medicine').distinct().count()
+    
+    # Critical medicines list - combine low stock and expiring/expired
+    critical_medicines = []
+    
+    # Get medicines with low stock or expiring soon
+    critical_stock_ids = stocks.filter(
+        Q(quantity__lte=LOW_STOCK_THRESHOLD) | 
+        Q(expiry_date__lte=expiry_threshold)
+    ).order_by('expiry_date', 'quantity')
+    
+    seen_medicines = set()
+    for stock in critical_stock_ids:
+        if stock.medicine.id not in seen_medicines:
+            seen_medicines.add(stock.medicine.id)
+            
+            # Determine status
+            status = 'ok'
+            status_text = 'In Stock'
+            
+            if stock.expiry_date < today:
+                status = 'expired'
+                status_text = 'Expired'
+            elif stock.expiry_date <= expiry_threshold:
+                status = 'expiring'
+                status_text = 'Expiring Soon'
+            elif stock.quantity <= LOW_STOCK_THRESHOLD:
+                status = 'low'
+                status_text = 'Low Stock'
+            
+            critical_medicines.append({
+                'id': stock.id,
+                'name': stock.medicine.name,
+                'strength': stock.medicine.strength,
+                'form': stock.medicine.dosage_form,
+                'quantity': stock.quantity,
+                'expiry_date': stock.expiry_date,
+                'status': status,
+                'status_text': status_text,
+                'price': stock.price,
+            })
+    
+    # Limit to top 10 most critical
+    critical_medicines = critical_medicines[:10]
+    
+    context = {
+        'pharmacy_name': pharmacy.pharmacy_id.name,
+        'pharmacist_name': 'Ahmad Yateem',
+        'today': today.strftime('%A, %B %d, %Y'),
+        'total_medicines': total_medicines,
+        'total_stock_quantity': total_stock_quantity,
+        'low_stock_count': low_stock_count,
+        'expiring_count': expiring_stocks,
+        'expired_count': expired_count,
+        'critical_medicines': critical_medicines,
+        'has_inventory': total_medicines > 0,
+    }
+    
+    return render(request, 'accounts/pharmacy_home.html', context)
+
+
+def pharmacy_home_preview(request):
+    """
+    Unauthenticated preview of the pharmacy dashboard UI.
+    Shows demo data to showcase the pharmacy homepage features.
+    """
+    from datetime import date
+    
+    today = date.today()
+    
+    # Demo critical medicines
+    demo_medicines = [
+        {
+            'id': 1,
+            'name': 'Paracetamol',
+            'strength': '500mg',
+            'form': 'Tablet',
+            'quantity': 8,
+            'expiry_date': today + timedelta(days=90),
+            'status': 'low',
+            'status_text': 'Low Stock',
+            'price': '2.50',
+        },
+        {
+            'id': 2,
+            'name': 'Amoxicillin',
+            'strength': '250mg',
+            'form': 'Capsule',
+            'quantity': 45,
+            'expiry_date': today + timedelta(days=25),
+            'status': 'expiring',
+            'status_text': 'Expiring Soon',
+            'price': '12.50',
+        },
+        {
+            'id': 3,
+            'name': 'Ibuprofen',
+            'strength': '400mg',
+            'form': 'Tablet',
+            'quantity': 25,
+            'expiry_date': today - timedelta(days=10),
+            'status': 'expired',
+            'status_text': 'Expired',
+            'price': '3.75',
+        },
+        {
+            'id': 4,
+            'name': 'Omeprazole',
+            'strength': '20mg',
+            'form': 'Capsule',
+            'quantity': 6,
+            'expiry_date': today + timedelta(days=120),
+            'status': 'low',
+            'status_text': 'Low Stock',
+            'price': '8.25',
+        },
+        {
+            'id': 5,
+            'name': 'Metformin',
+            'strength': '500mg',
+            'form': 'Tablet',
+            'quantity': 4,
+            'expiry_date': today + timedelta(days=15),
+            'status': 'expiring',
+            'status_text': 'Expiring Soon',
+            'price': '4.50',
+        },
+    ]
+    
+    context = {
+        'pharmacy_name': 'GreenLife Pharmacy (Demo)',
+        'pharmacist_name': 'Ahmad Yateem',
+        'today': today.strftime('%A, %B %d, %Y'),
+        'total_medicines': 15,
+        'total_stock_quantity': 674,
+        'low_stock_count': 5,
+        'expiring_count': 4,
+        'expired_count': 2,
+        'critical_medicines': demo_medicines,
+        'has_inventory': True,
+    }
+    
+    return render(request, 'accounts/pharmacy_home.html', context)
+
+# ============================================================================
+# PHARMACY MEDICINE MANAGEMENT VIEWS
+# ============================================================================
+
+@login_required
+def add_medicine(request):
+    """Add a new medicine to the catalog."""
+    # Ensure user is a pharmacy
+    if request.user.role != User.Role.PHARMACY:
+        return render(request, 'accounts/error.html', {
+            'message': 'This page is for pharmacies only.'
+        })
+    
+    try:
+        pharmacy = request.user.pharmacy
+    except Pharmacy.DoesNotExist:
+        # Auto-create Pharmacy profile if user has pharmacy role but no profile
+        pharmacy = Pharmacy.objects.create(
+            pharmacy_id=request.user,
+            license_number='',
+            address=''
+        )
+    
+    if request.method == 'POST':
+        medicine_form = MedicineForm(request.POST)
+        stock_form = NewMedicineStockForm(request.POST)
+        
+        if medicine_form.is_valid() and stock_form.is_valid():
+            try:
+                # Create the new medicine
+                medicine = medicine_form.save()
+                
+                # Create stock entry linked to the new medicine
+                stock = stock_form.save(commit=False)
+                stock.pharmacy = pharmacy
+                stock.medicine = medicine
+                stock.save()
+                
+                messages.success(request, f'✓ Successfully added {medicine.name} to inventory!')
+                return redirect('pharmacy_home')
+            except Exception as e:
+                messages.error(request, f'Error adding medicine: {str(e)}')
+        else:
+            # Show form errors
+            if medicine_form.errors:
+                for field, errors in medicine_form.errors.items():
+                    for error in errors:
+                        messages.error(request, f'{field}: {error}')
+            if stock_form.errors:
+                for field, errors in stock_form.errors.items():
+                    for error in errors:
+                        messages.error(request, f'{field}: {error}')
+    else:
+        medicine_form = MedicineForm()
+        stock_form = NewMedicineStockForm()
+    
+    context = {
+        'medicine_form': medicine_form,
+        'stock_form': stock_form,
+        'pharmacy': pharmacy,
+        'pharmacy_name': pharmacy.pharmacy_id.name,
+        'pharmacist_name': 'Ahmad Yateem',
+    }
+    
+    return render(request, 'accounts/add_medicine.html', context)
+
+
+@login_required
+def update_stock(request):
+    """View and update stock levels for all medicines."""
+    # Ensure user is a pharmacy
+    if request.user.role != User.Role.PHARMACY:
+        return render(request, 'accounts/error.html', {
+            'message': 'This page is for pharmacies only.'
+        })
+    
+    try:
+        pharmacy = request.user.pharmacy
+    except Pharmacy.DoesNotExist:
+        # Auto-create Pharmacy profile if user has pharmacy role but no profile
+        pharmacy = Pharmacy.objects.create(
+            pharmacy_id=request.user,
+            license_number='',
+            address=''
+        )
+    
+    # Get all stocks for this pharmacy
+    stocks = Stock.objects.filter(pharmacy=pharmacy).select_related('medicine').order_by('medicine__name')
+    
+    if request.method == 'POST':
+        # Handle bulk update
+        for stock in stocks:
+            quantity_key = f'quantity_{stock.id}'
+            price_key = f'price_{stock.id}'
+            expiry_key = f'expiry_{stock.id}'
+            
+            if quantity_key in request.POST:
+                try:
+                    stock.quantity = int(request.POST[quantity_key])
+                    stock.price = float(request.POST[price_key])
+                    stock.expiry_date = request.POST[expiry_key]
+                    stock.save()
+                except (ValueError, KeyError):
+                    continue
+        
+        messages.success(request, 'Stock updated successfully!')
+        return redirect('pharmacy_home')
+    
+    return render(request, 'accounts/update_stock.html', {
+        'stocks': stocks,
+        'pharmacy_name': pharmacy.pharmacy_id.name,
+        'pharmacist_name': 'Ahmad Yateem',
+    })
+
+
+@login_required
+def view_inventory(request):
+    """View complete inventory with search and filters."""
+    # Ensure user is a pharmacy
+    if request.user.role != User.Role.PHARMACY:
+        return render(request, 'accounts/error.html', {
+            'message': 'This page is for pharmacies only.'
+        })
+    
+    try:
+        pharmacy = request.user.pharmacy
+    except Pharmacy.DoesNotExist:
+        # Auto-create Pharmacy profile if user has pharmacy role but no profile
+        pharmacy = Pharmacy.objects.create(
+            pharmacy_id=request.user,
+            license_number='',
+            address=''
+        )
+    
+    # Get all stocks
+    stocks = Stock.objects.filter(pharmacy=pharmacy).select_related('medicine')
+    
+    # Search functionality
+    search_query = request.GET.get('search', '')
+    if search_query:
+        stocks = stocks.filter(
+            Q(medicine__name__icontains=search_query) |
+            Q(medicine__dosage_form__icontains=search_query) |
+            Q(medicine__strength__icontains=search_query)
+        )
+    
+    # Filter by status
+    status_filter = request.GET.get('status', 'all')
+    today = timezone.localdate()
+    expiry_threshold = today + timedelta(days=30)
+    
+    if status_filter == 'low':
+        stocks = stocks.filter(quantity__lte=10)
+    elif status_filter == 'expiring':
+        stocks = stocks.filter(expiry_date__lte=expiry_threshold, expiry_date__gte=today)
+    elif status_filter == 'expired':
+        stocks = stocks.filter(expiry_date__lt=today)
+    
+    # Sort
+    sort_by = request.GET.get('sort', 'name')
+    if sort_by == 'name':
+        stocks = stocks.order_by('medicine__name')
+    elif sort_by == 'quantity':
+        stocks = stocks.order_by('quantity')
+    elif sort_by == 'expiry':
+        stocks = stocks.order_by('expiry_date')
+    
+    # Prepare stock data with status
+    stock_list = []
+    for stock in stocks:
+        status = 'ok'
+        status_text = 'In Stock'
+        
+        if stock.expiry_date < today:
+            status = 'expired'
+            status_text = 'Expired'
+        elif stock.expiry_date <= expiry_threshold:
+            status = 'expiring'
+            status_text = 'Expiring Soon'
+        elif stock.quantity <= 10:
+            status = 'low'
+            status_text = 'Low Stock'
+        
+        stock_list.append({
+            'id': stock.id,
+            'medicine': stock.medicine,
+            'quantity': stock.quantity,
+            'price': stock.price,
+            'expiry_date': stock.expiry_date,
+            'status': status,
+            'status_text': status_text,
+        })
+    
+    return render(request, 'accounts/view_inventory.html', {
+        'stocks': stock_list,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'sort_by': sort_by,
+        'total_items': len(stock_list),
+        'pharmacy_name': pharmacy.pharmacy_id.name,
+        'pharmacist_name': 'Ahmad Yateem',
+    })
+
+
+@login_required
+def delete_stock(request, stock_id):
+    """Delete a stock entry."""
+    # Ensure user is a pharmacy
+    if request.user.role != User.Role.PHARMACY:
+        return render(request, 'accounts/error.html', {
+            'message': 'This page is for pharmacies only.'
+        })
+    
+    try:
+        pharmacy = request.user.pharmacy
+    except Pharmacy.DoesNotExist:
+        # Auto-create Pharmacy profile if user has pharmacy role but no profile
+        pharmacy = Pharmacy.objects.create(
+            pharmacy_id=request.user,
+            license_number='',
+            address=''
+        )
+    
+    try:
+        stock = Stock.objects.get(id=stock_id, pharmacy=pharmacy)
+        medicine_name = stock.medicine.name
+        stock.delete()
+        messages.success(request, f'Removed {medicine_name} from inventory.')
+    except (Stock.DoesNotExist):
+        messages.error(request, 'Stock item not found.')
+    
+    return redirect('view_inventory')
 
 def forgot_password(request):
     """Handle forgot password request"""
