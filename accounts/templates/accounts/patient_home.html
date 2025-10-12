@@ -1,0 +1,226 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Patient Dashboard</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <style>
+    :root{ --sidebar-w:260px; --transition:.25s ease; }
+    html,body{ height:100%; margin:0; background:#f8fafc; }
+    .app{ height:100vh; width:100vw; display:grid; grid-template-columns:var(--sidebar-w) 1fr; transition:var(--transition); overflow:hidden; }
+    .app.is-collapsed{ grid-template-columns:72px 1fr; }
+    .sidebar{ background:#fff; border-right:1px solid var(--line); display:flex; flex-direction:column; overflow:hidden; transition:var(--transition); }
+    .brand{ display:flex; align-items:center; gap:.6rem; padding:1rem; border-bottom:1px solid var(--line); }
+    .brand .logo{ width:36px; height:36px; border-radius:10px; display:grid; place-items:center; background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; font-weight:800; }
+    .brand h1{ font-size:1.05rem; margin:0; letter-spacing:.2px; }
+    .side-section{ padding:.75rem 1rem; }
+    .side-title{ font-size:.8rem; font-weight:800; color:var(--ink-dim); margin:.4rem 0 .3rem; }
+    .nav{ display:flex; flex-direction:column; gap:.4rem; }
+    .nav a{ display:flex; align-items:center; gap:.55rem; padding:.7rem .6rem; border-radius:10px; color:var(--ink); text-decoration:none; border:1px solid transparent; }
+    .nav a:hover{ background:#f1f5f9; border-color:var(--line); }
+    .nav a.primary{ background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; }
+    .collapse-btn{ border-top:1px solid var(--line); padding:.6rem 1rem; margin-top:auto; }
+    .collapse-btn button{ width:100%; border:1px solid var(--line); background:#fff; color:var(--ink); padding:.6rem; border-radius:10px; cursor:pointer; font-weight:700; }
+    .app.is-collapsed .brand h1, .app.is-collapsed .side-title, .app.is-collapsed .nav a span.label{ display:none; }
+    .app.is-collapsed .nav a{ justify-content:center; }
+
+    .main{ display:grid; grid-template-rows:auto 1fr; height:100%; overflow:hidden; }
+    .topbar{ background:#fff; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.75rem 1rem; }
+    .top-left{ display:flex; align-items:center; gap:1rem; }
+    .hamburger{ display:none; width:38px; height:38px; border-radius:10px; border:1px solid var(--line); background:#fff; cursor:pointer; }
+    .top-title{ font-weight:800; font-size:1.05rem; }
+    .top-right{ display:flex; align-items:center; gap:.9rem; }
+    .notif-btn{ position:relative; width:38px; height:38px; border-radius:10px; border:1px solid var(--line); background:#fff; cursor:pointer; display:grid; place-items:center; }
+    .notif-badge{ position:absolute; top:-4px; right:-4px; background:#ef4444; color:#fff; font-size:.7rem; font-weight:800; padding:.15rem .4rem; border-radius:999px; min-width:18px; text-align:center; }
+    .avatar{ width:36px; height:36px; border-radius:999px; display:grid; place-items:center; color:#fff; background:linear-gradient(135deg,var(--brand1),var(--brand2)); font-weight:800; }
+
+    .content{ display:grid; grid-template-columns:2fr 1fr; gap:1.2rem; height:100%; overflow:auto; padding:1.2rem; background:#f8fafc; }
+    .panel{ background:#fff; border:1px solid var(--line); border-radius:12px; box-shadow:0 2px 4px rgba(0,0,0,.05); display:flex; flex-direction:column; }
+    .panel .head{ padding:.9rem 1rem; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
+    .panel .head h2{ font-size:1rem; margin:0; }
+    .panel .body{ padding:.9rem 1rem; flex:1; overflow-y:auto; }
+
+    .appt-list{ display:flex; flex-direction:column; gap:.65rem; }
+    .appt{ border:1px solid var(--line); border-radius:12px; padding:.85rem .9rem; display:flex; justify-content:space-between; align-items:center; gap:.5rem; background:#fff; transition:.15s; }
+    .appt:hover{ box-shadow:0 0 0 4px var(--focus); border-color:var(--brand2); }
+    .appt .left{ display:flex; align-items:center; gap:.8rem; }
+    .appt .info{ flex:1; }
+    .appt .doctor-name{ font-weight:800; margin-bottom:.2rem; }
+    .appt .time{ display:flex; align-items:center; gap:.35rem; color:var(--ink-dim); font-weight:700; font-size:.9rem; }
+    .appt .actions{ display:flex; gap:.4rem; }
+    .appt .actions button{ padding:.4rem .7rem; border-radius:8px; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:.85rem; font-weight:600; transition:.15s; }
+    .appt .actions button:hover{ background:#f1f5f9; }
+    .appt .actions button.cancel{ color:#ef4444; border-color:#fecaca; }
+    .appt .actions button.cancel:hover{ background:#fef2f2; }
+
+    .empty-state{ text-align:center; padding:2rem 1rem; }
+    .empty-state svg{ margin:0 auto 1rem; opacity:.3; }
+    .empty-state p{ color:var(--ink-dim); margin:.5rem 0 1rem; }
+    .empty-state .btn{ display:inline-block; padding:.7rem 1.2rem; background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; text-decoration:none; border-radius:10px; font-weight:700; transition:.15s; }
+    .empty-state .btn:hover{ transform:translateY(-2px); box-shadow:0 4px 12px rgba(99,102,241,.3); }
+
+    .notif-list{ display:flex; flex-direction:column; gap:.6rem; }
+    .notif-item{ padding:.7rem; border-radius:8px; border:1px solid var(--line); background:#fff; transition:.15s; }
+    .notif-item.unread{ background:#eff6ff; border-color:#93c5fd; }
+    .notif-item:hover{ box-shadow:0 2px 6px rgba(0,0,0,.08); }
+    .notif-item p{ margin:0; font-size:.9rem; }
+
+    @media (max-width:1020px){ 
+      .content{ grid-template-columns:1fr; } 
+      .hamburger{ display:grid; } 
+      .appt{ flex-direction:column; align-items:flex-start; }
+      .appt .actions{ width:100%; justify-content:flex-end; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="appShell">
+    <aside class="sidebar">
+      <div class="brand"><div class="logo">ML</div><h1>Medilink</h1></div>
+      <div class="side-section">
+        <div class="side-title">Quick Actions</div>
+        <nav class="nav">
+          <a href="#" class="primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg><span class="label">View Full Schedule</span>
+          </a>
+          <a href="#">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14M5 12h14"></path>
+            </svg><span class="label">Schedule Appointment</span>
+          </a>
+          <a href="#">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"></path>
+            </svg><span class="label">View Medical History</span>
+          </a>
+          <a href="#">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg><span class="label">View Prescriptions</span>
+          </a>
+          <a href="#">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path>
+            </svg><span class="label">Browse Medicine</span>
+          </a>
+        </nav>
+      </div>
+      <div class="collapse-btn"><button type="button" id="toggleBtn">Collapse Sidebar</button></div>
+    </aside>
+
+    <section class="main">
+      <header class="topbar">
+        <div class="top-left">
+          <button class="hamburger" id="hamburger" aria-label="Toggle sidebar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+          <div class="top-title">Patient Homepage</div>
+        </div>
+        <div class="top-right">
+          <button class="notif-btn" id="notifBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            {% if unseen_count > 0 %}
+              <span class="notif-badge">{{ unseen_count }}</span>
+            {% endif %}
+          </button>
+          <div class="avatar">{{ patient_name|first|upper }}</div>
+          <div>
+            <div style="font-weight:800;">{{ patient_name }}</div>
+            <small style="color:var(--ink-dim);">{{ today }}</small>
+          </div>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="panel">
+          <div class="head">
+            <h2>Today's Appointments</h2>
+            <a href="#" class="auth-link">View all</a>
+          </div>
+          <div class="body">
+            {% if appointments %}
+              <div class="appt-list">
+                {% for appt in appointments %}
+                  <div class="appt">
+                    <div class="left">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
+                      </svg>
+                      <div class="info">
+                        <div class="doctor-name">{{ appt.doctor }}</div>
+                        <div class="time">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path>
+                          </svg>
+                          {{ appt.date_time|date:"h:i A" }}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="actions">
+                      <button type="button">Reschedule</button>
+                      <button type="button" class="cancel">Cancel</button>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="empty-state">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <p><strong>You have no upcoming appointments.</strong><br>Book one now!</p>
+                <a href="#" class="btn">Book Appointment</a>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="head">
+            <h2>Notifications</h2>
+            <a href="#" class="auth-link">View all</a>
+          </div>
+          <div class="body">
+            {% if notifications %}
+              <div class="notif-list">
+                {% for notif in notifications %}
+                  <div class="notif-item {% if not notif.seen %}unread{% endif %}">
+                    <p>{{ notif.message }}</p>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="empty-state" style="padding:1.5rem 1rem;">
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                </svg>
+                <p>No new notifications</p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const app=document.getElementById('appShell');
+    const btn=document.getElementById('toggleBtn');
+    const burger=document.getElementById('hamburger');
+    const toggle=()=>{
+      app.classList.toggle('is-collapsed');
+      btn.textContent=app.classList.contains('is-collapsed')?'Expand Sidebar':'Collapse Sidebar';
+    };
+    if(btn) btn.addEventListener('click',toggle);
+    if(burger) burger.addEventListener('click',toggle);
+  </script>
+</body>
+</html>

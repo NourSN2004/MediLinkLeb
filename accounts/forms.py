@@ -7,7 +7,6 @@ USER_TYPE_CHOICES = [
     ('patient', 'Patient'),
     ('doctor', 'Doctor'),
     ('pharmacy', 'Pharmacy'),
-    ('admin', 'Admin'),
 ]
 
 

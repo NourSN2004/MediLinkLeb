@@ -34,6 +34,20 @@
     .top-right{ display:flex; align-items:center; gap:.9rem; }
     .avatar{ width:36px; height:36px; border-radius:999px; display:grid; place-items:center; color:#fff; background:linear-gradient(135deg,var(--brand1),var(--brand2)); font-weight:800; }
 
+    .btn-ghost {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      padding: .45rem .7rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: background .2s ease;
+    }
+    .btn-ghost:hover {
+      background: #f1f5f9;
+    }
+
     .content{ display:grid; grid-template-columns:2fr 1fr; gap:1.2rem; height:100%; overflow:auto; padding:1.2rem; background:#f8fafc; }
     .panel{ background:#fff; border:1px solid var(--line); border-radius:12px; box-shadow:0 2px 4px rgba(0,0,0,.05); display:flex; flex-direction:column; }
     .panel .head{ padding:.9rem 1rem; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
@@ -94,6 +108,10 @@
             <div style="font-weight:800;">{{ doctor_name }}</div>
             <small style="color:var(--ink-dim);">{{ today }}</small>
           </div>
+          <form action="{% url 'logout' %}" method="post" style="margin-left:.5rem;">
+            {% csrf_token %}
+            <button type="submit" class="btn-ghost">Sign out</button>
+          </form>
         </div>
       </header>
 
