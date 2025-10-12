@@ -5,7 +5,8 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from .models import Appointment, Patient, Doctor, User
-from .forms import SignupForm
+from .services import AuthenticationService
+from .forms import SignUpForm, LoginForm, ForgotPasswordForm, ResetPasswordForm
 
 
 def home_redirect(request):
@@ -47,13 +48,13 @@ def signup_step2(request):
     user_type = request.session.get('user_type', 'patient')
     
     if request.method == 'POST':
-        form = SignupForm(request.POST, user_type=user_type)
+        form = SignUpForm(request.POST, user_type=user_type)
         if form.is_valid():
             user = form.save()
             login(request, user)
             return redirect('verification_sent')
     else:
-        form = SignupForm(user_type=user_type)
+        form = SignUpForm(user_type=user_type)
     
     return render(request, 'accounts/signup_step2.html', {'form': form})
 
@@ -62,6 +63,11 @@ def verification_sent(request):
     """Show verification email sent confirmation"""
     return render(request, 'accounts/verification_sent.html')
 
+def verify_email(request, token):
+    """Handle email verification (placeholder)"""
+    # TODO: Implement actual verification logic with token stored in database
+    messages.success(request, 'Email verified successfully!')
+    return redirect('login')
 
 def custom_login(request):
     """Custom login view that redirects based on user role"""
@@ -187,3 +193,40 @@ def patient_home(request):
     }
 
     return render(request, "accounts/patient_home.html", context)
+
+def forgot_password(request):
+    """Handle forgot password request"""
+    if request.method == 'POST':
+        form = ForgotPasswordForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data['email']
+            success = AuthenticationService.initiate_password_reset(email)
+            if success:
+                messages.success(request, 'Password reset link has been sent to your email.')
+                return redirect('login')
+            else:
+                messages.error(request, 'No account found with this email address.')
+    else:
+        form = ForgotPasswordForm()
+    
+    return render(request, 'accounts/forgot_password.html', {'form': form})
+
+
+def reset_password(request, token):
+    """Handle password reset with token"""
+    if request.method == 'POST':
+        form = ResetPasswordForm(request.POST)
+        if form.is_valid():
+            success = AuthenticationService.reset_password(
+                token,
+                form.cleaned_data['password1']
+            )
+            if success:
+                messages.success(request, 'Your password has been reset successfully. You can now sign in.')
+                return redirect('login')
+            else:
+                messages.error(request, 'Invalid or expired reset link. Please request a new one.')
+    else:
+        form = ResetPasswordForm()
+    
+    return render(request, 'accounts/reset_password.html', {'form': form, 'token': token})

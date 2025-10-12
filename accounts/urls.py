@@ -13,7 +13,7 @@ urlpatterns = [
     path('verify-email/<str:token>/', views.verify_email, name='verify_email'),
     
     # Authentication
-    path('login/', views.login_view, name='login'),
+    path('login/', views.custom_login, name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
     
     # Password reset
