@@ -23,7 +23,7 @@ def home_redirect(request):
                 return redirect('pharmacy_home')
         # If user has no role, send to login
         return redirect('login')
-    return redirect('signup_step1')
+    return redirect('login')
 
 
 def signup_step1(request):
