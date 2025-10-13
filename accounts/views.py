@@ -8,8 +8,11 @@ from .models import Appointment, Patient, Doctor, User, Pharmacy, Stock, Medicin
 from .services import AuthenticationService
 from django.db.models import Q, Count, Sum
 from datetime import timedelta
+from django.db import transaction, IntegrityError
 from .forms import SignUpForm, ForgotPasswordForm, ResetPasswordForm, MedicineForm, StockForm, NewMedicineStockForm, StockUpdateForm
+import logging
 
+logger = logging.getLogger(__name__)
 
 def home_redirect(request):
     """Route users to appropriate homepage based on their role"""
@@ -421,7 +424,7 @@ def pharmacy_home_preview(request):
 
 @login_required
 def add_medicine(request):
-    """Add a new medicine to the catalog."""
+    """Add a new medicine to the catalog with stock."""
     # Ensure user is a pharmacy
     if request.user.role != User.Role.PHARMACY:
         return render(request, 'accounts/error.html', {
@@ -431,7 +434,6 @@ def add_medicine(request):
     try:
         pharmacy = request.user.pharmacy
     except Pharmacy.DoesNotExist:
-        # Auto-create Pharmacy profile if user has pharmacy role but no profile
         pharmacy = Pharmacy.objects.create(
             pharmacy_id=request.user,
             license_number=None,
@@ -442,31 +444,82 @@ def add_medicine(request):
         medicine_form = MedicineForm(request.POST)
         stock_form = NewMedicineStockForm(request.POST)
         
+        # Debug logging
+        print(f"POST data: {request.POST}")
+        print(f"Medicine form valid: {medicine_form.is_valid()}")
+        print(f"Stock form valid: {stock_form.is_valid()}")
+        
         if medicine_form.is_valid() and stock_form.is_valid():
             try:
-                # Create the new medicine
-                medicine = medicine_form.save()
-                
-                # Create stock entry linked to the new medicine
-                stock = stock_form.save(commit=False)
-                stock.pharmacy = pharmacy
-                stock.medicine = medicine
-                stock.save()
-                
-                messages.success(request, f'✓ Successfully added {medicine.name} to inventory!')
-                return redirect('pharmacy_home')
+                with transaction.atomic():
+                    # Get cleaned data
+                    name = medicine_form.cleaned_data['name']
+                    strength = medicine_form.cleaned_data['strength']
+                    dosage_form = medicine_form.cleaned_data['dosage_form']
+                    description = medicine_form.cleaned_data.get('description', '')
+                    
+                    # Get or create medicine
+                    medicine, created = Medicine.objects.get_or_create(
+                        name=name,
+                        strength=strength,
+                        dosage_form=dosage_form,
+                        defaults={'description': description}
+                    )
+                    
+                    print(f"Medicine {'created' if created else 'found'}: {medicine}")
+                    
+                    # Get stock data
+                    quantity = stock_form.cleaned_data['quantity']
+                    price = stock_form.cleaned_data['price']
+                    expiry_date = stock_form.cleaned_data['expiry_date']
+                    
+                    # Check for existing stock with same expiry
+                    existing_stock = Stock.objects.filter(
+                        pharmacy=pharmacy,
+                        medicine=medicine,
+                        expiry_date=expiry_date
+                    ).first()
+                    
+                    if existing_stock:
+                        # Update existing stock
+                        existing_stock.quantity += quantity
+                        existing_stock.price = price
+                        existing_stock.save()
+                        print(f"Updated stock: {existing_stock}")
+                        messages.success(request, f'✓ Updated stock for {medicine.name}!')
+                    else:
+                        # Create new stock
+                        stock = Stock.objects.create(
+                            pharmacy=pharmacy,
+                            medicine=medicine,
+                            quantity=quantity,
+                            price=price,
+                            expiry_date=expiry_date
+                        )
+                        print(f"Created stock: {stock}")
+                        messages.success(request, f'✓ Successfully added {medicine.name} to inventory!')
+                    
+                    return redirect('pharmacy_home')
+                    
+            except IntegrityError as e:
+                print(f'IntegrityError: {e}')
+                messages.error(request, 'This medicine/stock combination already exists.')
             except Exception as e:
-                messages.error(request, f'Error adding medicine: {str(e)}')
+                print(f'Exception: {e}')
+                import traceback
+                traceback.print_exc()
+                messages.error(request, f'Error: {str(e)}')
         else:
-            # Show form errors
-            if medicine_form.errors:
-                for field, errors in medicine_form.errors.items():
-                    for error in errors:
-                        messages.error(request, f'{field}: {error}')
-            if stock_form.errors:
-                for field, errors in stock_form.errors.items():
-                    for error in errors:
-                        messages.error(request, f'{field}: {error}')
+            # Form validation errors
+            print(f"Medicine form errors: {medicine_form.errors}")
+            print(f"Stock form errors: {stock_form.errors}")
+            
+            for field, errors in medicine_form.errors.items():
+                for error in errors:
+                    messages.error(request, f'Medicine {field}: {error}')
+            for field, errors in stock_form.errors.items():
+                for error in errors:
+                    messages.error(request, f'Stock {field}: {error}')
     else:
         medicine_form = MedicineForm()
         stock_form = NewMedicineStockForm()
@@ -485,7 +538,6 @@ def add_medicine(request):
 @login_required
 def update_stock(request):
     """View and update stock levels for all medicines."""
-    # Ensure user is a pharmacy
     if request.user.role != User.Role.PHARMACY:
         return render(request, 'accounts/error.html', {
             'message': 'This page is for pharmacies only.'
@@ -494,41 +546,61 @@ def update_stock(request):
     try:
         pharmacy = request.user.pharmacy
     except Pharmacy.DoesNotExist:
-        # Auto-create Pharmacy profile if user has pharmacy role but no profile
         pharmacy = Pharmacy.objects.create(
             pharmacy_id=request.user,
             license_number=None,
             address=''
         )
     
-    # Get all stocks for this pharmacy
     stocks = Stock.objects.filter(pharmacy=pharmacy).select_related('medicine').order_by('medicine__name')
-    
-    # Get all available medicines (for adding new stock)
     all_medicines = Medicine.objects.all().order_by('name')
     
     if request.method == 'POST':
-        # Handle bulk update
-        for stock in stocks:
-            quantity_key = f'quantity_{stock.id}'
-            price_key = f'price_{stock.id}'
-            expiry_key = f'expiry_{stock.id}'
-            
-            if quantity_key in request.POST:
-                try:
-                    stock.quantity = int(request.POST[quantity_key])
-                    stock.price = float(request.POST[price_key])
-                    stock.expiry_date = request.POST[expiry_key]
-                    stock.save()
-                except (ValueError, KeyError):
-                    continue
+        print(f"Update stock POST: {request.POST}")
+        updated_count = 0
         
-        messages.success(request, 'Stock updated successfully!')
+        try:
+            with transaction.atomic():
+                for stock in stocks:
+                    quantity_key = f'quantity_{stock.id}'
+                    price_key = f'price_{stock.id}'
+                    expiry_key = f'expiry_{stock.id}'
+                    
+                    if quantity_key in request.POST:
+                        try:
+                            new_quantity = int(request.POST[quantity_key])
+                            new_price = float(request.POST[price_key])
+                            new_expiry = request.POST[expiry_key]
+                            
+                            # Update if changed
+                            if (stock.quantity != new_quantity or 
+                                float(stock.price) != new_price or 
+                                str(stock.expiry_date) != new_expiry):
+                                
+                                stock.quantity = new_quantity
+                                stock.price = new_price
+                                stock.expiry_date = new_expiry
+                                stock.save()
+                                updated_count += 1
+                                print(f"Updated stock {stock.id}")
+                                
+                        except (ValueError, KeyError) as e:
+                            print(f"Error updating stock {stock.id}: {e}")
+                            continue
+            
+            messages.success(request, f'Updated {updated_count} item(s)!' if updated_count > 0 else 'No changes made.')
+            
+        except Exception as e:
+            print(f"Bulk update error: {e}")
+            import traceback
+            traceback.print_exc()
+            messages.error(request, f'Error: {str(e)}')
+        
         return redirect('pharmacy_home')
     
     return render(request, 'accounts/update_stock.html', {
-        'stock_items': stocks,  # Template expects 'stock_items'
-        'stocks': stocks,  # For backward compatibility
+        'stock_items': stocks,
+        'stocks': stocks,
         'all_medicines': all_medicines,
         'pharmacy_name': pharmacy.pharmacy_id.name,
         'pharmacist_name': 'Ahmad Yateem',
@@ -538,7 +610,6 @@ def update_stock(request):
 @login_required
 def view_inventory(request):
     """View complete inventory with search and filters."""
-    # Ensure user is a pharmacy
     if request.user.role != User.Role.PHARMACY:
         return render(request, 'accounts/error.html', {
             'message': 'This page is for pharmacies only.'
@@ -547,17 +618,15 @@ def view_inventory(request):
     try:
         pharmacy = request.user.pharmacy
     except Pharmacy.DoesNotExist:
-        # Auto-create Pharmacy profile if user has pharmacy role but no profile
         pharmacy = Pharmacy.objects.create(
             pharmacy_id=request.user,
             license_number=None,
             address=''
         )
     
-    # Get all stocks
     stocks = Stock.objects.filter(pharmacy=pharmacy).select_related('medicine')
     
-    # Search functionality
+    # Search
     search_query = request.GET.get('search', '')
     if search_query:
         stocks = stocks.filter(
@@ -566,10 +635,10 @@ def view_inventory(request):
             Q(medicine__strength__icontains=search_query)
         )
     
-    # Filter by status
-    status_filter = request.GET.get('status', 'all')
+    # Filters
     today = timezone.localdate()
     expiry_threshold = today + timedelta(days=30)
+    status_filter = request.GET.get('status', 'all')
     
     if status_filter == 'low':
         stocks = stocks.filter(quantity__lte=10)
@@ -587,7 +656,7 @@ def view_inventory(request):
     elif sort_by == 'expiry':
         stocks = stocks.order_by('expiry_date')
     
-    # Prepare stock data with status
+    # Build stock list with status
     stock_list = []
     for stock in stocks:
         status = 'ok'
@@ -615,7 +684,7 @@ def view_inventory(request):
     
     return render(request, 'accounts/view_inventory.html', {
         'stock_items': stock_list,
-        'stocks': stock_list,  # For backward compatibility
+        'stocks': stock_list,
         'search_query': search_query,
         'status_filter': status_filter,
         'sort_by': sort_by,
@@ -628,7 +697,6 @@ def view_inventory(request):
 @login_required
 def delete_stock(request, stock_id):
     """Delete a stock entry."""
-    # Ensure user is a pharmacy
     if request.user.role != User.Role.PHARMACY:
         return render(request, 'accounts/error.html', {
             'message': 'This page is for pharmacies only.'
@@ -637,7 +705,6 @@ def delete_stock(request, stock_id):
     try:
         pharmacy = request.user.pharmacy
     except Pharmacy.DoesNotExist:
-        # Auto-create Pharmacy profile if user has pharmacy role but no profile
         pharmacy = Pharmacy.objects.create(
             pharmacy_id=request.user,
             license_number=None,
@@ -649,7 +716,7 @@ def delete_stock(request, stock_id):
         medicine_name = stock.medicine.name
         stock.delete()
         messages.success(request, f'Removed {medicine_name} from inventory.')
-    except (Stock.DoesNotExist):
+    except Stock.DoesNotExist:
         messages.error(request, 'Stock item not found.')
     
     return redirect('view_inventory')
