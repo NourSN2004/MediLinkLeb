@@ -511,9 +511,9 @@
           <div class="top-title">Pharmacy Dashboard</div>
         </div>
         <div class="top-right">
-          <div class="avatar">AY</div>
+          <div class="avatar">{{ pharmacy_name|first|upper }}</div>
           <div>
-            <div style="font-weight:800;">Ahmad Yateem</div>
+            <div style="font-weight:800;">{{ pharmacy_name }}</div>
             <small style="color:var(--ink-dim);">{{ today }}</small>
           </div>
           <form action="{% url 'logout' %}" method="post" style="margin-left:.5rem;">
