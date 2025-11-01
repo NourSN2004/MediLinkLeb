@@ -28,6 +28,11 @@ urlpatterns = [
     path('patient/home/', views.patient_home, name='patient_home'),
     path('pharmacy/home/', views.pharmacy_home, name='pharmacy_home'),
     
+    path('patient/schedule-appointment/', views.schedule_appointment, name='schedule_appointment'),
+    path('patient/medical-history/', views.view_medical_history, name='view_medical_history'),
+    path('patient/prescriptions/', views.view_prescriptions, name='view_prescriptions'),
+    path('patient/browse-medicine/', views.browse_medicine, name='browse_medicine'),
+    
     # Pharmacy dashboard & management
     path('pharmacy/home/', views.pharmacy_home, name='pharmacy_home'),
     path('pharmacy/add-medicine/', views.add_medicine, name='add_medicine'),

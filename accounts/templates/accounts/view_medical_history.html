@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Patient Dashboard - Medilink</title>
+  <title>Medical History - Medilink</title>
   <link rel="stylesheet" href="{% static 'css/styles.css' %}">
   <style>
     :root{ --sidebar-w:260px; --transition:.25s ease; }
@@ -32,48 +32,49 @@
     .hamburger{ display:none; width:38px; height:38px; border-radius:10px; border:1px solid var(--line); background:#fff; cursor:pointer; }
     .top-title{ font-weight:800; font-size:1.05rem; }
     .top-right{ display:flex; align-items:center; gap:.9rem; }
-    .notif-btn{ position:relative; width:38px; height:38px; border-radius:10px; border:1px solid var(--line); background:#fff; cursor:pointer; display:grid; place-items:center; }
-    .notif-badge{ position:absolute; top:-4px; right:-4px; background:#ef4444; color:#fff; font-size:.7rem; font-weight:800; padding:.15rem .4rem; border-radius:999px; min-width:18px; text-align:center; }
     .avatar{ width:36px; height:36px; border-radius:999px; display:grid; place-items:center; color:#fff; background:linear-gradient(135deg,var(--brand1),var(--brand2)); font-weight:800; }
     .btn-ghost{ border:1px solid var(--line); background:#fff; color:var(--ink); padding:.45rem .7rem; border-radius:10px; cursor:pointer; font-weight:700; transition:background .2s ease; }
     .btn-ghost:hover{ background:#f1f5f9; }
 
-    .content{ display:grid; grid-template-columns:2fr 1fr; gap:1.2rem; height:100%; overflow:auto; padding:1.2rem; background:#f8fafc; }
-    .panel{ background:#fff; border:1px solid var(--line); border-radius:12px; box-shadow:0 2px 4px rgba(0,0,0,.05); display:flex; flex-direction:column; }
-    .panel .head{ padding:.9rem 1rem; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
-    .panel .head h2{ font-size:1rem; margin:0; }
-    .panel .body{ padding:.9rem 1rem; flex:1; overflow-y:auto; }
+    .content{ padding:1.5rem; height:100%; overflow-y:auto; background:#f8fafc; }
+    .page-header{ margin-bottom:1.5rem; }
+    .page-header h1{ font-size:1.75rem; font-weight:800; margin-bottom:.4rem; }
+    .page-header p{ color:var(--ink-dim); }
 
-    .appt-list{ display:flex; flex-direction:column; gap:.65rem; }
-    .appt{ border:1px solid var(--line); border-radius:12px; padding:.85rem .9rem; display:flex; justify-content:space-between; align-items:center; gap:.5rem; background:#fff; transition:.15s; }
-    .appt:hover{ box-shadow:0 0 0 4px var(--focus); border-color:var(--brand2); }
-    .appt .left{ display:flex; align-items:center; gap:.8rem; }
-    .appt .info{ flex:1; }
-    .appt .doctor-name{ font-weight:800; margin-bottom:.2rem; }
-    .appt .time{ display:flex; align-items:center; gap:.35rem; color:var(--ink-dim); font-weight:700; font-size:.9rem; }
-    .appt .actions{ display:flex; gap:.4rem; }
-    .appt .actions button{ padding:.4rem .7rem; border-radius:8px; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:.85rem; font-weight:600; transition:.15s; }
-    .appt .actions button:hover{ background:#f1f5f9; }
-    .appt .actions button.cancel{ color:#ef4444; border-color:#fecaca; }
-    .appt .actions button.cancel:hover{ background:#fef2f2; }
+    .info-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:1rem; margin-bottom:1.5rem; }
+    .info-card{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:1rem; }
+    .info-card .label{ font-size:.85rem; color:var(--ink-dim); font-weight:600; margin-bottom:.4rem; }
+    .info-card .value{ font-size:1.1rem; font-weight:700; color:var(--ink); }
 
-    .empty-state{ text-align:center; padding:2rem 1rem; }
+    .section{ background:#fff; border:1px solid var(--line); border-radius:12px; margin-bottom:1.5rem; }
+    .section-header{ padding:1rem; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:between; }
+    .section-header h2{ font-size:1.1rem; font-weight:800; margin:0; }
+    .section-body{ padding:1rem; }
+
+    .history-item{ border:1px solid var(--line); border-radius:10px; padding:1rem; margin-bottom:.8rem; transition:.15s; }
+    .history-item:hover{ border-color:var(--brand2); box-shadow:0 0 0 3px var(--focus); }
+    .history-date{ font-size:.85rem; color:var(--ink-dim); font-weight:700; margin-bottom:.5rem; }
+    .history-doctor{ font-weight:700; color:var(--ink); margin-bottom:.3rem; }
+    .history-notes{ color:var(--ink-dim); font-size:.9rem; }
+
+    .test-results-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:1rem; }
+    .test-card{ border:1px solid var(--line); border-radius:10px; padding:1rem; text-align:center; transition:.15s; cursor:pointer; }
+    .test-card:hover{ border-color:var(--brand2); transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,.1); }
+    .test-icon{ width:48px; height:48px; margin:0 auto 1rem; background:linear-gradient(135deg,rgba(14,165,164,.1),rgba(2,132,199,.1)); border-radius:10px; display:grid; place-items:center; }
+    .test-name{ font-weight:700; font-size:.9rem; margin-bottom:.3rem; }
+    .test-date{ font-size:.8rem; color:var(--ink-dim); }
+
+    .empty-state{ text-align:center; padding:3rem 1rem; }
     .empty-state svg{ margin:0 auto 1rem; opacity:.3; }
-    .empty-state p{ color:var(--ink-dim); margin:.5rem 0 1rem; }
-    .empty-state .btn{ display:inline-block; padding:.7rem 1.2rem; background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; text-decoration:none; border-radius:10px; font-weight:700; transition:.15s; }
-    .empty-state .btn:hover{ transform:translateY(-2px); box-shadow:0 4px 12px rgba(99,102,241,.3); }
+    .empty-state p{ color:var(--ink-dim); margin:.5rem 0; }
 
-    .notif-list{ display:flex; flex-direction:column; gap:.6rem; }
-    .notif-item{ padding:.7rem; border-radius:8px; border:1px solid var(--line); background:#fff; transition:.15s; }
-    .notif-item.unread{ background:#eff6ff; border-color:#93c5fd; }
-    .notif-item:hover{ box-shadow:0 2px 6px rgba(0,0,0,.08); }
-    .notif-item p{ margin:0; font-size:.9rem; }
+    .summary-box{ background:linear-gradient(135deg,rgba(14,165,164,.05),rgba(2,132,199,.05)); border:1px solid var(--line); border-radius:12px; padding:1.5rem; margin-bottom:1.5rem; }
+    .summary-box h3{ font-size:1rem; font-weight:800; margin-bottom:.75rem; }
+    .summary-box p{ color:var(--ink-dim); line-height:1.6; }
 
     @media (max-width:1020px){ 
-      .content{ grid-template-columns:1fr; } 
       .hamburger{ display:grid; } 
-      .appt{ flex-direction:column; align-items:flex-start; }
-      .appt .actions{ width:100%; justify-content:flex-end; }
+      .info-grid{ grid-template-columns:1fr; }
     }
   </style>
 </head>
@@ -84,7 +85,7 @@
       <div class="side-section">
         <div class="side-title">Quick Actions</div>
         <nav class="nav">
-          <a href="{% url 'patient_home' %}" class="active">
+          <a href="{% url 'patient_home' %}">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="3" y1="10" x2="21" y2="10"></line>
             </svg><span class="label">View Full Schedule</span>
@@ -94,7 +95,7 @@
               <path d="M12 5v14M5 12h14"></path>
             </svg><span class="label">Schedule Appointment</span>
           </a>
-          <a href="{% url 'view_medical_history' %}">
+          <a href="{% url 'view_medical_history' %}" class="active">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"></path>
             </svg><span class="label">View Medical History</span>
@@ -122,17 +123,9 @@
               <line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line>
             </svg>
           </button>
-          <div class="top-title">Patient Homepage</div>
+          <div class="top-title">Medical History</div>
         </div>
         <div class="top-right">
-          <button class="notif-btn" id="notifBtn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-            </svg>
-            {% if unseen_count > 0 %}
-              <span class="notif-badge">{{ unseen_count }}</span>
-            {% endif %}
-          </button>
           <div class="avatar">{{ patient_name|first|upper }}</div>
           <div>
             <div style="font-weight:800;">{{ patient_name }}</div>
@@ -146,69 +139,94 @@
       </header>
 
       <div class="content">
-        <div class="panel">
-          <div class="head">
-            <h2>Today's Appointments</h2>
-            <a href="{% url 'patient_home' %}" class="auth-link">View all</a>
+        <div class="page-header">
+          <h1>📋 Your Medical History</h1>
+          <p>View your health information, past appointments, and test results</p>
+        </div>
+
+        <!-- Patient Information -->
+        <div class="info-grid">
+          <div class="info-card">
+            <div class="label">National ID</div>
+            <div class="value">{{ patient_info.national_id }}</div>
           </div>
-          <div class="body">
-            {% if appointments %}
-              <div class="appt-list">
-                {% for appt in appointments %}
-                  <div class="appt">
-                    <div class="left">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
-                      </svg>
-                      <div class="info">
-                        <div class="doctor-name">{{ appt.doctor }}</div>
-                        <div class="time">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path>
-                          </svg>
-                          {{ appt.date_time|date:"h:i A" }}
-                        </div>
-                      </div>
-                    </div>
-                    <div class="actions">
-                      <button type="button">Reschedule</button>
-                      <button type="button" class="cancel">Cancel</button>
-                    </div>
-                  </div>
-                {% endfor %}
-              </div>
+          <div class="info-card">
+            <div class="label">Date of Birth</div>
+            <div class="value">{{ patient_info.dob }}</div>
+          </div>
+          <div class="info-card">
+            <div class="label">Gender</div>
+            <div class="value">{{ patient_info.gender }}</div>
+          </div>
+          <div class="info-card">
+            <div class="label">Blood Type</div>
+            <div class="value">{{ patient_info.blood_type }}</div>
+          </div>
+        </div>
+
+        <!-- Medical Summary -->
+        <div class="summary-box">
+          <h3>📝 Medical Summary</h3>
+          <p>{{ patient_info.history_summary }}</p>
+        </div>
+
+        <!-- Past Appointments -->
+        <div class="section">
+          <div class="section-header">
+            <h2>Past Appointments</h2>
+          </div>
+          <div class="section-body">
+            {% if past_appointments %}
+              {% for appt in past_appointments %}
+                <div class="history-item">
+                  <div class="history-date">{{ appt.date_time|date:"F d, Y - h:i A" }}</div>
+                  <div class="history-doctor">{{ appt.doctor }}</div>
+                  <div class="history-notes">{{ appt.doctor_notes|default:"No notes available" }}</div>
+                </div>
+              {% endfor %}
             {% else %}
               <div class="empty-state">
-                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"></path>
                 </svg>
-                <p><strong>You have no upcoming appointments.</strong><br>Book one now!</p>
-                <a href="{% url 'schedule_appointment' %}" class="btn">Book Appointment</a>
+                <p>No past appointments recorded</p>
               </div>
             {% endif %}
           </div>
         </div>
 
-        <div class="panel">
-          <div class="head">
-            <h2>Notifications</h2>
-            <a href="#" class="auth-link">View all</a>
+        <!-- Test Results -->
+        <div class="section">
+          <div class="section-header">
+            <h2>Test Results</h2>
           </div>
-          <div class="body">
-            {% if notifications %}
-              <div class="notif-list">
-                {% for notif in notifications %}
-                  <div class="notif-item {% if not notif.seen %}unread{% endif %}">
-                    <p>{{ notif.message }}</p>
-                  </div>
+          <div class="section-body">
+            {% if test_results %}
+              <div class="test-results-grid">
+                {% for result in test_results %}
+                  <a href="{{ result.test_result.url }}" target="_blank" class="test-card">
+                    <div class="test-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                      </svg>
+                    </div>
+                    <div class="test-name">Test Result #{{ forloop.counter }}</div>
+                    <div class="test-date">Click to view</div>
+                  </a>
                 {% endfor %}
               </div>
             {% else %}
-              <div class="empty-state" style="padding:1.5rem 1rem;">
+              <div class="empty-state">
                 <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                  <path d="M9 11l3 3L22 4"></path>
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
                 </svg>
-                <p>No new notifications</p>
+                <p>No test results available</p>
               </div>
             {% endif %}
           </div>
@@ -227,19 +245,6 @@
     };
     if(btn) btn.addEventListener('click',toggle);
     if(burger) burger.addEventListener('click',toggle);
-    
-    // Highlight active nav based on current URL
-    document.addEventListener('DOMContentLoaded', function() {
-      const navLinks = document.querySelectorAll('.nav a');
-      const currentPath = window.location.pathname;
-      
-      navLinks.forEach(link => {
-        if (link.getAttribute('href') === currentPath) {
-          navLinks.forEach(l => l.classList.remove('active'));
-          link.classList.add('active');
-        }
-      });
-    });
   </script>
 </body>
 </html>
