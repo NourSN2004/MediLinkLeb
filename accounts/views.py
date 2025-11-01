@@ -4,7 +4,7 @@ from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import AuthenticationForm
 from django.shortcuts import render, redirect
 from django.utils import timezone
-from .models import Appointment, Patient, Doctor, User, Pharmacy, Stock, Medicine
+from .models import Appointment, Patient, Doctor, User, Pharmacy, Stock, Medicine, Prescribes
 from .services import AuthenticationService
 from django.db.models import Q, Count, Sum
 from datetime import timedelta
@@ -232,6 +232,209 @@ def patient_home(request):
     }
 
     return render(request, "accounts/patient_home.html", context)
+@login_required
+def schedule_appointment(request):
+    """
+    Page for patients to schedule new appointments with doctors
+    """
+    user = request.user
+    
+    # Check if user is a patient
+    if user.role != User.Role.PATIENT:
+        return render(request, "accounts/error.html", {
+            "message": "This page is for patients only."
+        })
+    
+    try:
+        patient_profile = user.patient
+    except Patient.DoesNotExist:
+        patient_profile = Patient.objects.create(
+            patient_id=user,
+            national_id='',
+            dob=None,
+            gender='',
+            blood_type='',
+            history_summary=''
+        )
+    
+    # Get all doctors
+    doctors = Doctor.objects.all().select_related('doctor_id')
+    
+    context = {
+        "patient_name": user.name or user.username,
+        "today": timezone.localdate().strftime("%A, %B %d"),
+        "doctors": doctors,
+    }
+    
+    return render(request, "accounts/schedule_appointment.html", context)
+
+
+@login_required
+def view_medical_history(request):
+    """
+    Page for patients to view their medical history and test results
+    """
+    user = request.user
+    
+    # Check if user is a patient
+    if user.role != User.Role.PATIENT:
+        return render(request, "accounts/error.html", {
+            "message": "This page is for patients only."
+        })
+    
+    try:
+        patient_profile = user.patient
+    except Patient.DoesNotExist:
+        patient_profile = Patient.objects.create(
+            patient_id=user,
+            national_id='',
+            dob=None,
+            gender='',
+            blood_type='',
+            history_summary=''
+        )
+    
+    # Get patient's appointments history
+    past_appointments = Appointment.objects.filter(
+        patient=patient_profile,
+        status=Appointment.Status.COMPLETED
+    ).select_related('doctor__doctor_id').order_by('-date_time')[:10]
+    
+    # Get test results
+    test_results = patient_profile.test_results.all().order_by('-id')
+    
+    # Patient basic info
+    patient_info = {
+        'national_id': patient_profile.national_id or 'Not provided',
+        'dob': patient_profile.dob.strftime('%B %d, %Y') if patient_profile.dob else 'Not provided',
+        'gender': patient_profile.gender or 'Not provided',
+        'blood_type': patient_profile.blood_type or 'Not provided',
+        'history_summary': patient_profile.history_summary or 'No medical history recorded yet.',
+    }
+    
+    context = {
+        "patient_name": user.name or user.username,
+        "today": timezone.localdate().strftime("%A, %B %d"),
+        "patient_info": patient_info,
+        "past_appointments": past_appointments,
+        "test_results": test_results,
+    }
+    
+    return render(request, "accounts/view_medical_history.html", context)
+
+
+@login_required
+def view_prescriptions(request):
+    """
+    Page for patients to view their prescriptions
+    """
+    user = request.user
+    
+    # Check if user is a patient
+    if user.role != User.Role.PATIENT:
+        return render(request, "accounts/error.html", {
+            "message": "This page is for patients only."
+        })
+    
+    try:
+        patient_profile = user.patient
+    except Patient.DoesNotExist:
+        patient_profile = Patient.objects.create(
+            patient_id=user,
+            national_id='',
+            dob=None,
+            gender='',
+            blood_type='',
+            history_summary=''
+        )
+    
+    # Get all prescriptions for this patient
+    prescriptions = Prescribes.objects.filter(
+        patient=patient_profile
+    ).select_related('doctor__doctor_id', 'medicine').order_by('-date_prescribed')
+    
+    # Group prescriptions by date
+    from itertools import groupby
+    from operator import attrgetter
+    
+    prescriptions_by_date = []
+    for date, group in groupby(prescriptions, key=attrgetter('date_prescribed')):
+        prescriptions_by_date.append({
+            'date': date,
+            'items': list(group)
+        })
+    
+    context = {
+        "patient_name": user.name or user.username,
+        "today": timezone.localdate().strftime("%A, %B %d"),
+        "prescriptions_by_date": prescriptions_by_date,
+        "total_prescriptions": prescriptions.count(),
+    }
+    
+    return render(request, "accounts/view_prescriptions.html", context)
+
+
+@login_required
+def browse_medicine(request):
+    """
+    Page for patients to browse available medicines
+    """
+    user = request.user
+    
+    # Check if user is a patient
+    if user.role != User.Role.PATIENT:
+        return render(request, "accounts/error.html", {
+            "message": "This page is for patients only."
+        })
+    
+    # Get search query
+    search_query = request.GET.get('search', '')
+    
+    # Get all medicines with stock information
+    medicines = Medicine.objects.all()
+    
+    if search_query:
+        medicines = medicines.filter(
+            Q(name__icontains=search_query) |
+            Q(dosage_form__icontains=search_query) |
+            Q(strength__icontains=search_query) |
+            Q(description__icontains=search_query)
+        )
+    
+    # Get stock availability for each medicine
+    medicine_list = []
+    for medicine in medicines:
+        # Check if medicine is in stock at any pharmacy
+        stocks = Stock.objects.filter(
+            medicine=medicine,
+            quantity__gt=0,
+            expiry_date__gte=timezone.localdate()
+        ).select_related('pharmacy__pharmacy_id')
+        
+        pharmacies_with_stock = []
+        for stock in stocks:
+            pharmacies_with_stock.append({
+                'pharmacy_name': stock.pharmacy.pharmacy_id.name,
+                'price': stock.price,
+                'quantity': stock.quantity,
+            })
+        
+        medicine_list.append({
+            'medicine': medicine,
+            'in_stock': stocks.exists(),
+            'pharmacies': pharmacies_with_stock[:3],  # Show top 3
+            'total_pharmacies': stocks.count(),
+        })
+    
+    context = {
+        "patient_name": user.name or user.username,
+        "today": timezone.localdate().strftime("%A, %B %d"),
+        "medicine_list": medicine_list,
+        "search_query": search_query,
+        "total_medicines": len(medicine_list),
+    }
+    
+    return render(request, "accounts/browse_medicine.html", context)
 
 @login_required
 def pharmacy_home(request):
