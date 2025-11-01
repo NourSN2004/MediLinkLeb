@@ -2,7 +2,10 @@
 {% load static %}
 
 {% block title %}Create Account — Step 2{% endblock %}
-{% block extra_head %}<meta name="color-scheme" content="light dark">{% endblock %}
+{% block extra_head %}
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="{% static 'css/password-validation.css' %}">
+{% endblock %}
 
 {% block content %}
 <div class="auth-container">
@@ -16,7 +19,7 @@
     <h1 class="auth-title">Create your account</h1>
     <p class="auth-subtitle">Enter your details to access the clinic platform.</p>
 
-    <form class="auth-form" method="post" novalidate>
+    <form class="auth-form" method="post" novalidate id="signupForm">
       {% csrf_token %}
 
       <div class="form-group">
@@ -33,18 +36,39 @@
         {% if form.password1.errors %}
           <div class="form-error">{{ form.password1.errors.0 }}</div>
         {% endif %}
-        <p class="form-hint">Use at least 8 characters with a mix of letters & numbers.</p>
+        
+        <!-- Password Requirements List -->
+        <div class="password-requirements" id="passwordRequirements">
+          <p class="requirements-title">Password must contain:</p>
+          <ul class="requirements-list">
+            <li id="req-length" class="requirement">
+              <span class="req-icon">○</span>
+              <span class="req-text">At least 8 characters</span>
+            </li>
+            <li id="req-letter" class="requirement">
+              <span class="req-icon">○</span>
+              <span class="req-text">At least one letter</span>
+            </li>
+            <li id="req-number" class="requirement">
+              <span class="req-icon">○</span>
+              <span class="req-text">At least one number</span>
+            </li>
+          </ul>
+        </div>
       </div>
 
       <div class="form-group">
         <label class="form-label" for="id_password2">Confirm password</label>
         {{ form.password2 }}
+        <div class="form-error" id="passwordMatchError" style="display: none;">
+          Passwords don't match
+        </div>
         {% if form.password2.errors %}
           <div class="form-error">{{ form.password2.errors.0 }}</div>
         {% endif %}
       </div>
 
-      <button type="submit" class="btn btn-primary btn-full">Create account</button>
+      <button type="submit" class="btn btn-primary btn-full" id="submitBtn">Create account</button>
     </form>
 
     <div class="auth-footer">
@@ -53,4 +77,216 @@
     </div>
   </div>
 </div>
+
+<style>
+.password-requirements {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background-color: rgba(59, 130, 246, 0.05);
+  border-radius: 0.375rem;
+  border: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+.requirements-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+  margin: 0 0 0.5rem 0;
+}
+
+.requirements-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.requirement {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #64748b;
+  transition: color 0.2s ease;
+}
+
+.requirement.valid {
+  color: #10b981;
+}
+
+.requirement.invalid {
+  color: #ef4444;
+}
+
+.req-icon {
+  font-size: 1rem;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.requirement.valid .req-icon {
+  content: '✓';
+}
+
+.requirement.valid .req-icon::before {
+  content: '✓';
+}
+
+.requirement.invalid .req-icon::before {
+  content: '✗';
+}
+
+.req-text {
+  flex: 1;
+}
+
+@media (prefers-color-scheme: dark) {
+  .password-requirements {
+    background-color: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.2);
+  }
+  
+  .requirements-title {
+    color: #94a3b8;
+  }
+  
+  .requirement {
+    color: #94a3b8;
+  }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const password1 = document.getElementById('id_password1');
+  const password2 = document.getElementById('id_password2');
+  const form = document.getElementById('signupForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const passwordMatchError = document.getElementById('passwordMatchError');
+  
+  // Password requirement elements
+  const reqLength = document.getElementById('req-length');
+  const reqLetter = document.getElementById('req-letter');
+  const reqNumber = document.getElementById('req-number');
+  
+  let validationState = {
+    length: false,
+    letter: false,
+    number: false,
+    match: false
+  };
+  
+  function validatePassword(password) {
+    const hasLength = password.length >= 8;
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    
+    return {
+      length: hasLength,
+      letter: hasLetter,
+      number: hasNumber,
+      isValid: hasLength && hasLetter && hasNumber
+    };
+  }
+  
+  function updateRequirementUI(element, isValid) {
+    if (isValid) {
+      element.classList.remove('invalid');
+      element.classList.add('valid');
+    } else {
+      element.classList.remove('valid');
+      element.classList.add('invalid');
+    }
+  }
+  
+  function checkPasswordMatch() {
+    const pass1 = password1.value;
+    const pass2 = password2.value;
+    
+    if (pass2.length > 0) {
+      if (pass1 === pass2) {
+        validationState.match = true;
+        passwordMatchError.style.display = 'none';
+        password2.style.borderColor = '';
+      } else {
+        validationState.match = false;
+        passwordMatchError.style.display = 'block';
+        password2.style.borderColor = '#ef4444';
+      }
+    } else {
+      validationState.match = false;
+      passwordMatchError.style.display = 'none';
+      password2.style.borderColor = '';
+    }
+  }
+  
+  function updateSubmitButton() {
+    const allValid = validationState.length && 
+                     validationState.letter && 
+                     validationState.number && 
+                     (password2.value.length === 0 || validationState.match);
+    
+    if (allValid && password2.value.length > 0) {
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+      submitBtn.style.cursor = 'pointer';
+    } else {
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.5';
+      submitBtn.style.cursor = 'not-allowed';
+    }
+  }
+  
+  // Validate password on input
+  password1.addEventListener('input', function() {
+    const password = this.value;
+    const validation = validatePassword(password);
+    
+    // Update validation state
+    validationState.length = validation.length;
+    validationState.letter = validation.letter;
+    validationState.number = validation.number;
+    
+    // Update UI
+    updateRequirementUI(reqLength, validation.length);
+    updateRequirementUI(reqLetter, validation.letter);
+    updateRequirementUI(reqNumber, validation.number);
+    
+    // Check if passwords match (in case password1 changes after password2 is filled)
+    if (password2.value.length > 0) {
+      checkPasswordMatch();
+    }
+    
+    updateSubmitButton();
+  });
+  
+  // Check password match on input
+  password2.addEventListener('input', function() {
+    checkPasswordMatch();
+    updateSubmitButton();
+  });
+  
+  // Prevent form submission if validation fails
+  form.addEventListener('submit', function(e) {
+    const validation = validatePassword(password1.value);
+    
+    if (!validation.isValid) {
+      e.preventDefault();
+      alert('Please ensure your password meets all requirements.');
+      return false;
+    }
+    
+    if (password1.value !== password2.value) {
+      e.preventDefault();
+      alert('Passwords do not match.');
+      return false;
+    }
+  });
+  
+  // Initialize submit button state
+  updateSubmitButton();
+});
+</script>
 {% endblock %}
