@@ -1,4 +1,9 @@
 from pathlib import Path
+from os import getenv
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # ------------------------------------------------
 # BASE SETUP
@@ -145,17 +150,16 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Actual folder where uploads will
 
 AUTH_USER_MODEL = 'accounts.User'
 
-# Email Configuration (add this section)
-SITE_URL = 'http://localhost:8000'  # Change this to your domain in production
-DEFAULT_FROM_EMAIL = 'noreply@medilink.com'
+# ==============================================================================
+# EMAIL CONFIGURATION
+# ==============================================================================
 
-# For development, use console email backend (emails print to console)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-
-# For production, you'll need to configure an actual email service:
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = 'smtp.gmail.com'  # or your email provider
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = 'your-email@gmail.com'
-# EMAIL_HOST_PASSWORD = 'your-app-password'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = getenv('EMAIL_HOST_USER') # ← Replace with YOUR Gmail
+EMAIL_HOST_PASSWORD = getenv('APP_PASS')  # ← Replace with YOUR App Password (16 chars)
+DEFAULT_FROM_EMAIL = f'MediLink <{EMAIL_HOST_USER}>'  # ← Replace with YOUR Gmail
+SITE_URL = 'http://localhost:8000'  # Keep this as is for local development
+EMAIL_TIMEOUT = 10

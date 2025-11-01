@@ -5,7 +5,9 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator
-
+from django.utils import timezone
+from datetime import timedelta
+import secrets
 
 # -----------------------------
 # 1) USER (supertype)
@@ -23,13 +25,20 @@ class User(AbstractUser):
     phone_number = models.CharField(max_length=30, blank=True)
     reset_password_token = models.CharField(max_length=100, blank=True, null=True)
     reset_password_expires = models.DateTimeField(null=True, blank=True)
+    # Email verification fields
+    email_verified = models.BooleanField(default=False)
+    email_verified_at = models.DateTimeField(null=True, blank=True)
     
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
     
     def __str__(self):
         return f"{self.name} ({self.role})"
-
+    def verify_email(self):
+        """Mark email as verified"""
+        self.email_verified = True
+        self.email_verified_at = timezone.now()
+        self.save()
 
 # -----------------------------
 # 2) DOCTOR (subtype of User)
@@ -190,3 +199,40 @@ class PatientTestResult(models.Model):
 
     def __str__(self):
         return f"Test Result for {self.patient}"
+
+# -----------------------------
+# 11) Email Verification Token
+# -----------------------------
+class EmailVerificationToken(models.Model):
+    """Token for email verification"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='verification_tokens')
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['token', 'is_used']),
+        ]
+    
+    def save(self, *args, **kwargs):
+        if not self.token:
+            self.token = secrets.token_urlsafe(32)
+        if not self.expires_at:
+            # Token expires in 24 hours
+            self.expires_at = timezone.now() + timedelta(hours=24)
+        super().save(*args, **kwargs)
+    
+    def is_valid(self):
+        """Check if token is still valid"""
+        return not self.is_used and timezone.now() < self.expires_at
+    
+    def mark_as_used(self):
+        """Mark token as used"""
+        self.is_used = True
+        self.save()
+    
+    def __str__(self):
+        return f"Verification token for {self.user.email}"

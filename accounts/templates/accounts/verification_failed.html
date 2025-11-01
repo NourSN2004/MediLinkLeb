@@ -1,0 +1,97 @@
+{% extends 'accounts/base.html' %}
+{% load static %}
+
+{% block title %}Verification Failed{% endblock %}
+{% block extra_head %}<meta name="color-scheme" content="light dark">{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="error-icon">
+      <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+    </div>
+
+    <h1 class="auth-title">Verification Failed</h1>
+    <p class="auth-subtitle">{{ message }}</p>
+
+    <div class="error-box">
+      <h3>What can you do?</h3>
+      <ul>
+        <li>Request a new verification email</li>
+        <li>Check if you've already verified your email</li>
+        <li>Contact support if the problem persists</li>
+      </ul>
+    </div>
+
+    <div class="action-buttons">
+      <a href="{% url 'login' %}" class="btn btn-primary btn-full">
+        Go to Sign In
+      </a>
+      <a href="{% url 'signup_step1' %}" class="btn btn-secondary btn-full" style="margin-top: 10px;">
+        Create New Account
+      </a>
+    </div>
+
+    <div class="auth-footer" style="margin-top: 30px;">
+      Need help? <a href="mailto:support@medilink.com" class="auth-link">Contact support</a>
+    </div>
+  </div>
+</div>
+
+<style>
+.error-icon {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #ef4444;
+}
+
+.error-box {
+  background-color: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.1);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 30px 0;
+}
+
+.error-box h3 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.error-box ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #666;
+}
+
+.error-box ul li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.action-buttons {
+  margin-top: 30px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .error-box {
+    background-color: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+  
+  .error-box h3 {
+    color: #f3f4f6;
+  }
+  
+  .error-box ul {
+    color: #d1d5db;
+  }
+}
+</style>
+{% endblock %}

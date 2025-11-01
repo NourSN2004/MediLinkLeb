@@ -42,8 +42,39 @@ def signup_step1(request):
     return render(request, 'accounts/signup_step1.html')
 
 
+# def signup_step2(request):
+#     """Step 2: Create user account"""
+#     user_type = request.session.get('user_type')
+#     if not user_type:
+#         messages.error(request, 'Please select an account type first.')
+#         return redirect('signup_step1')
+    
+#     if request.method == 'POST':
+#         form = SignUpForm(request.POST)
+#         if form.is_valid():
+#             user = AuthenticationService.signup_user(
+#                 email=form.cleaned_data['email'],
+#                 password=form.cleaned_data['password1'],
+#                 user_type=user_type,
+#                 first_name=form.cleaned_data.get('first_name', ''),
+#                 last_name=form.cleaned_data.get('last_name', '')
+#             )
+
+#             if user:
+#                 login(request, user)
+#                 AuthenticationService.send_verification_email(user)
+#                 # Clear user_type from session
+#                 request.session.pop('user_type', None)
+#                 return redirect('verification_sent')
+#             else:
+#                 messages.error(request, 'Error creating account. Please try again.')
+#     else:
+#         form = SignUpForm()
+
+#     return render(request, 'accounts/signup_step2.html', {'form': form})
+
 def signup_step2(request):
-    """Step 2: Create user account"""
+    """Step 2: Create user account and send verification email"""
     user_type = request.session.get('user_type')
     if not user_type:
         messages.error(request, 'Please select an account type first.')
@@ -61,11 +92,22 @@ def signup_step2(request):
             )
 
             if user:
-                login(request, user)
-                AuthenticationService.send_verification_email(user)
-                # Clear user_type from session
-                request.session.pop('user_type', None)
-                return redirect('verification_sent')
+                # Send verification email
+                token = AuthenticationService.send_verification_email(user, request)
+                
+                if token:
+                    # Store user email in session for verification_sent page
+                    request.session['verification_email'] = user.email
+                    request.session['user_id'] = user.id
+                    # Clear user_type from session
+                    request.session.pop('user_type', None)
+                    
+                    messages.success(request, 'Account created! Please check your email to verify your account.')
+                    return redirect('verification_sent')
+                else:
+                    # Account created but email failed - still allow login but warn
+                    messages.warning(request, 'Account created but verification email failed to send. Please contact support.')
+                    return redirect('login')
             else:
                 messages.error(request, 'Error creating account. Please try again.')
     else:
@@ -76,16 +118,123 @@ def signup_step2(request):
 
 def verification_sent(request):
     """Show verification email sent confirmation"""
-    return render(request, 'accounts/verification_sent.html')
+    email = request.session.get('verification_email')
+    user_id = request.session.get('user_id')
+    
+    if not email:
+        # If no email in session, redirect to login
+        return redirect('login')
+    
+    context = {
+        'email': email,
+        'user_id': user_id,
+    }
+    
+    return render(request, 'accounts/verification_sent.html', context)
 
 def verify_email(request, token):
-    """Handle email verification (placeholder)"""
-    # TODO: Implement actual verification logic with token stored in database
-    messages.success(request, 'Email verified successfully!')
+    """Handle email verification with token"""
+    success, message, user = AuthenticationService.verify_email_token(token)
+    
+    if success:
+        messages.success(request, message)
+        # Optionally log the user in automatically after verification
+        if user:
+            login(request, user)
+            # Redirect to appropriate home page based on role
+            if user.role == User.Role.DOCTOR:
+                return redirect('doctor_home')
+            elif user.role == User.Role.PATIENT:
+                return redirect('patient_home')
+            elif user.role == User.Role.PHARMACY:
+                return redirect('pharmacy_home')
+        return redirect('login')
+    else:
+        messages.error(request, message)
+        return render(request, 'accounts/verification_failed.html', {
+            'message': message
+        })
+        
+@login_required
+def resend_verification(request):
+    """Resend verification email to logged-in user"""
+    user = request.user
+    
+    if user.email_verified:
+        messages.info(request, 'Your email is already verified!')
+        return redirect('home_redirect')
+    
+    token = AuthenticationService.resend_verification_email(user, request)
+    
+    if token:
+        request.session['verification_email'] = user.email
+        messages.success(request, f'Verification email has been resent to {user.email}')
+        return redirect('verification_sent')
+    else:
+        messages.error(request, 'Failed to send verification email. Please try again later.')
+        return redirect('home_redirect')
+
+
+def resend_verification_public(request):
+    """Resend verification email without being logged in"""
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        
+        try:
+            user = User.objects.get(email=email)
+            
+            if user.email_verified:
+                messages.info(request, 'This email is already verified!')
+                return redirect('login')
+            
+            token = AuthenticationService.resend_verification_email(user, request)
+            
+            if token:
+                request.session['verification_email'] = email
+                messages.success(request, f'Verification email has been resent to {email}')
+                return redirect('verification_sent')
+            else:
+                messages.error(request, 'Failed to send verification email. Please try again later.')
+        
+        except User.DoesNotExist:
+            # Don't reveal if email exists or not for security
+            messages.info(request, 'If this email is registered, a verification email will be sent.')
+            return redirect('login')
+    
     return redirect('login')
 
+
+# def custom_login(request):
+#     """Custom login view that redirects based on user role"""
+#     if request.method == 'POST':
+#         form = AuthenticationForm(request, data=request.POST)
+#         if form.is_valid():
+#             username = form.cleaned_data.get('username')
+#             password = form.cleaned_data.get('password')
+#             user = authenticate(username=username, password=password)
+#             if user is not None:
+#                 login(request, user)
+                
+#                 # Redirect based on role
+#                 if hasattr(user, 'role'):
+#                     if user.role == User.Role.DOCTOR:
+#                         return redirect('doctor_home')
+#                     elif user.role == User.Role.PATIENT:
+#                         return redirect('patient_home')
+#                     elif user.role == User.Role.PHARMACY:
+#                         return redirect('pharmacy_home')
+                
+#                 # Default fallback
+#                 return redirect('home_redirect')
+#         else:
+#             messages.error(request, 'Invalid username or password.')
+#     else:
+#         form = AuthenticationForm()
+    
+#     return render(request, 'accounts/login.html', {'form': form, 'title': 'Sign in'})
+
 def custom_login(request):
-    """Custom login view that redirects based on user role"""
+    """Custom login view that redirects based on user role and checks email verification"""
     if request.method == 'POST':
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
@@ -93,6 +242,13 @@ def custom_login(request):
             password = form.cleaned_data.get('password')
             user = authenticate(username=username, password=password)
             if user is not None:
+                # Check if email is verified (optional - comment out if you want to allow unverified logins)
+                if not user.email_verified:
+                    messages.warning(request, 'Please verify your email before logging in. Check your inbox for the verification link.')
+                    request.session['verification_email'] = user.email
+                    request.session['user_id'] = user.id
+                    return redirect('verification_sent')
+                
                 login(request, user)
                 
                 # Redirect based on role
@@ -112,7 +268,6 @@ def custom_login(request):
         form = AuthenticationForm()
     
     return render(request, 'accounts/login.html', {'form': form, 'title': 'Sign in'})
-
 
 @login_required
 def doctor_home(request):

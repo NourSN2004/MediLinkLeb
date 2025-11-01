@@ -11,6 +11,8 @@ urlpatterns = [
     path('signup/step2/', views.signup_step2, name='signup_step2'),
     path('verification-sent/', views.verification_sent, name='verification_sent'),
     path('verify-email/<str:token>/', views.verify_email, name='verify_email'),
+    path('resend-verification/', views.resend_verification, name='resend_verification'),
+    path('resend-verification-public/', views.resend_verification_public, name='resend_verification_public'),
     
     # Authentication
     path('login/', views.custom_login, name='login'),

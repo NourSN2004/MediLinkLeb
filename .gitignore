@@ -2,3 +2,5 @@ backups/
 __pycache__/
 accounts/__pycache__/
 .venv/
+.env
+db.sqlite3

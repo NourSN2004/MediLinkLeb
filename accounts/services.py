@@ -3,6 +3,8 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 import uuid
 
 User = get_user_model()
@@ -36,25 +38,145 @@ class AuthenticationService:
             return user
         return None
     
+    # @staticmethod
+    # def send_verification_email(user):
+    #     """Send verification email to user"""
+    #     verification_token = str(uuid.uuid4())
+    #     # In production, store token in database or cache
+    #     verification_link = f"{settings.SITE_URL}/verify-email/{verification_token}"
+        
+    #     try:
+    #         send_mail(
+    #             'Verify your email',
+    #             f'Please click this link to verify your email: {verification_link}',
+    #             settings.DEFAULT_FROM_EMAIL,
+    #             [user.email],
+    #             fail_silently=False,
+    #         )
+    #         return True
+    #     except Exception as e:
+    #         print(f"Error sending verification email: {e}")
+    #         return False
+    
     @staticmethod
-    def send_verification_email(user):
-        """Send verification email to user"""
-        verification_token = str(uuid.uuid4())
-        # In production, store token in database or cache
-        verification_link = f"{settings.SITE_URL}/verify-email/{verification_token}"
+    def send_verification_email(user, request):
+        """
+        Send verification email to user with token stored in database
+        
+        Args:
+            user: User instance
+            request: HTTP request object (needed to build absolute URL)
+        
+        Returns:
+            EmailVerificationToken instance or None on failure
+        """
+        from .models import EmailVerificationToken
         
         try:
+            # Create verification token
+            token = EmailVerificationToken.objects.create(user=user)
+            
+            # Build verification URL
+            verification_url = request.build_absolute_uri(
+                f'/verify-email/{token.token}/'
+            )
+            
+            # Email context
+            context = {
+                'user': user,
+                'user_name': user.name or user.email.split('@')[0],
+                'verification_url': verification_url,
+                'site_name': 'MediLink Clinic Platform',
+                'expiry_hours': 24,
+            }
+            
+            # Render email templates
+            html_message = render_to_string('emails/verification_email.html', context)
+            plain_message = strip_tags(html_message)
+            
+            # Send email
             send_mail(
-                'Verify your email',
-                f'Please click this link to verify your email: {verification_link}',
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
+                subject='Verify your email address - MediLink',
+                message=plain_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                html_message=html_message,
                 fail_silently=False,
             )
-            return True
+            
+            return token
+            
         except Exception as e:
             print(f"Error sending verification email: {e}")
-            return False
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    @staticmethod
+    def resend_verification_email(user, request):
+        """
+        Resend verification email to user
+        Invalidates old tokens and creates a new one
+        
+        Args:
+            user: User instance
+            request: HTTP request object
+        
+        Returns:
+            EmailVerificationToken instance or None on failure
+        """
+        from .models import EmailVerificationToken
+        
+        try:
+            # Invalidate all previous unused tokens for this user
+            EmailVerificationToken.objects.filter(
+                user=user,
+                is_used=False
+            ).update(is_used=True)
+            
+            # Send new verification email
+            return AuthenticationService.send_verification_email(user, request)
+            
+        except Exception as e:
+            print(f"Error resending verification email: {e}")
+            return None
+    
+    @staticmethod
+    def verify_email_token(token_string):
+        """
+        Verify email using token
+        
+        Args:
+            token_string: The token string from the URL
+        
+        Returns:
+            tuple: (success: bool, message: str, user: User or None)
+        """
+        from .models import EmailVerificationToken
+        
+        try:
+            token = EmailVerificationToken.objects.select_related('user').get(
+                token=token_string,
+                is_used=False
+            )
+            
+            if not token.is_valid():
+                return False, "This verification link has expired. Please request a new one.", None
+            
+            # Mark token as used
+            token.mark_as_used()
+            
+            # Verify user's email
+            user = token.user
+            user.verify_email()
+            
+            return True, "Your email has been verified successfully!", user
+            
+        except EmailVerificationToken.DoesNotExist:
+            return False, "Invalid verification link. Please check the URL or request a new verification email.", None
+        except Exception as e:
+            print(f"Error verifying email token: {e}")
+            return False, "An error occurred during verification. Please try again.", None
     
     @staticmethod
     def initiate_password_reset(email):

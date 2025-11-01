@@ -1,5 +1,5 @@
 {% extends 'accounts/base.html' %}
-{% load static %}
+{% comment %} {% load static %}
 
 {% block title %}Email Verification{% endblock %}
 {% block extra_head %}<meta name="color-scheme" content="light dark">{% endblock %}
@@ -39,4 +39,186 @@
     </div>
   </div>
 </div>
+{% endblock %} {% endcomment %}
+
+{% comment %} {% extends 'accounts/base.html' %} {% endcomment %}
+{% load static %}
+
+{% block title %}Verify Your Email{% endblock %}
+{% block extra_head %}<meta name="color-scheme" content="light dark">{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="verification-icon">
+      <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+      </svg>
+    </div>
+
+    <h1 class="auth-title">Check your email</h1>
+    <p class="auth-subtitle">
+      We've sent a verification link to<br>
+      <strong>{{ email }}</strong>
+    </p>
+
+    <div class="info-box">
+      <h3>What's next?</h3>
+      <ol>
+        <li>Open the email we just sent you</li>
+        <li>Click the verification link</li>
+        <li>Start using your account!</li>
+      </ol>
+    </div>
+
+    <div class="help-section">
+      <p class="help-text">Didn't receive the email?</p>
+      <ul class="help-list">
+        <li>Check your spam or junk folder</li>
+        <li>Make sure you entered the correct email</li>
+        <li>Wait a few minutes and check again</li>
+      </ul>
+      
+      <form method="post" action="{% url 'resend_verification_public' %}" style="margin-top: 20px;">
+        {% csrf_token %}
+        <input type="hidden" name="email" value="{{ email }}">
+        <button type="submit" class="btn btn-secondary btn-full">
+          Resend verification email
+        </button>
+      </form>
+    </div>
+
+    <div class="auth-footer" style="margin-top: 30px;">
+      <a href="{% url 'login' %}" class="auth-link">← Back to sign in</a>
+    </div>
+  </div>
+</div>
+
+<style>
+.verification-icon {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #10b981;
+}
+
+.verification-icon svg {
+  animation: checkmark 0.5s ease-in-out;
+}
+
+@keyframes checkmark {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.info-box {
+  background-color: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.1);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 30px 0;
+}
+
+.info-box h3 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.info-box ol {
+  margin: 0;
+  padding-left: 20px;
+  color: #666;
+}
+
+.info-box ol li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.help-section {
+  margin-top: 30px;
+  padding-top: 30px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.help-text {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.help-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px 0;
+}
+
+.help-list li {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 8px;
+  padding-left: 20px;
+  position: relative;
+}
+
+.help-list li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: #9ca3af;
+}
+
+.btn-secondary {
+  background-color: #6b7280;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-secondary:hover {
+  background-color: #4b5563;
+}
+
+@media (prefers-color-scheme: dark) {
+  .info-box {
+    background-color: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.2);
+  }
+  
+  .info-box h3 {
+    color: #f3f4f6;
+  }
+  
+  .info-box ol {
+    color: #d1d5db;
+  }
+  
+  .help-section {
+    border-top-color: #374151;
+  }
+  
+  .help-text {
+    color: #f3f4f6;
+  }
+  
+  .help-list li {
+    color: #d1d5db;
+  }
+}
+</style>
 {% endblock %}
