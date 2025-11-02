@@ -28,6 +28,13 @@ urlpatterns = [
     path('patient/home/', views.patient_home, name='patient_home'),
     path('pharmacy/home/', views.pharmacy_home, name='pharmacy_home'),
 
+
+    path('patient/schedule-appointment/', views.schedule_appointment, name='schedule_appointment'),
+    path('patient/medical-history/', views.view_medical_history, name='view_medical_history'),
+    path('patient/prescriptions/', views.view_prescriptions, name='view_prescriptions'),
+    path('patient/browse-medicine/', views.browse_medicine, name='browse_medicine'),
+    
+
     # Doctor appointments
     path('doctor/appointments/', views.doctor_appointments, name='doctor_appointments'),
     path('doctor/appointments/new/', views.doctor_new_appointment, name='doctor_new_appointment'),
@@ -52,4 +59,6 @@ urlpatterns = [
     path('pharmacy/inventory/', views.view_inventory, name='view_inventory'),
     path('pharmacy/delete-stock/<int:stock_id>/', views.delete_stock, name='delete_stock'),
     
+
+  
 ]
