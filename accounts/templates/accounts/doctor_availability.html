@@ -1,0 +1,96 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add / Edit Availability</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <style>
+    .auth-card{ max-width: 960px; margin: 0 auto; }
+    body {
+      /* clinic pattern with white outlined medical equipment */
+      background-color: var(--bg);
+      background-image:
+        radial-gradient(1200px 600px at 10% -5%, rgba(14,165,164,0.08), transparent 60%),
+        radial-gradient(1000px 500px at 110% 10%, rgba(2,132,199,0.08), transparent 60%),
+        url("data:image/svg+xml;utf8,
+          <svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160' fill='none' stroke='%23FFFFFF' stroke-opacity='0.12' stroke-width='2'>
+            <g>
+              <path d='M20 40c0 16 12 28 28 28s28-12 28-28'/>
+              <path d='M76 40v26c0 17 14 30 30 30s30-13 30-30V40'/>
+              <circle cx='130' cy='22' r='6'/>
+              <path d='M18 126h24M30 114v24'/> 
+              <rect x='92' y='110' width='18' height='30' rx='2'/> 
+              <path d='M100 100v10'/> 
+              <path d='M56 124l10-10 10 10-10 10-10-10z'/> 
+            </g>
+          </svg>");
+      background-size: auto, auto, 160px 160px;
+    }
+    .calendar-wrap { margin-bottom: 1.2rem; }
+    .cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:.6rem; }
+    .cal-title { font-size:1.4rem; font-weight:900; letter-spacing:.2px; }
+    .cal-nav { display:flex; gap:.5rem; }
+    .btn-nav { border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:10px; padding:.4rem .6rem; text-decoration:none; }
+    .calendar { display:grid; grid-template-columns: repeat(7, 1fr); gap:.35rem; }
+    .dow { text-align:center; font-weight:800; color:var(--ink-dim); padding:.4rem 0; }
+    .cell { min-height:64px; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:.45rem; position:relative; transition:box-shadow .15s ease, transform .1s ease; }
+    .cell:hover{ box-shadow:0 2px 10px rgba(0,0,0,.06); transform:translateY(-1px); }
+    .cell.dim { opacity:.45; }
+    .date-num { font-weight:800; font-size:.95rem; color:var(--ink-dim); }
+    .badge { position:absolute; right:.45rem; top:.45rem; font-size:.72rem; padding:.15rem .45rem; border-radius:999px; border:1px solid var(--line-2); background:#f8fafc; }
+    .slot { margin-top:.35rem; font-weight:700; font-size:.9rem; color:#0b1221; }
+    .full { border-color:#fecaca; box-shadow: inset 0 0 0 2px #fee2e2; }
+    .full .badge { border-color:#fecaca; background:#fee2e2; color:#991b1b; }
+    .cell a { position:absolute; inset:0; }
+
+    .weekly-grid { display:grid; grid-template-columns: 1.2fr 1fr 1fr; gap:.6rem; align-items:center; margin-top:1rem; }
+    .weekly-grid .hdr { font-size:.85rem; color:var(--ink-dim); font-weight:700; }
+    .row { display:contents; }
+    .day { font-weight:800; }
+    .time-input { width:100%; padding:.55rem .6rem; border:1px solid var(--line); border-radius:10px; background:var(--input-bg); }
+    .actions { display:flex; gap:.6rem; margin-top:1rem; }
+    .btn { padding:.6rem .9rem; border-radius:10px; border:1px solid var(--line); background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; font-weight:800; cursor:pointer; }
+    .btn-secondary { padding:.6rem .9rem; border-radius:10px; border:1px solid var(--line); background:var(--btn-secondary-bg); color:var(--ink); font-weight:800; text-decoration:none; display:inline-grid; place-items:center; }
+    .switch { display:flex; align-items:center; gap:.5rem; }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      <h1 class="auth-title">Schedule</h1>
+      <p class="auth-subtitle">Your monthly schedule. Times reflect your weekly availability.</p>
+
+      <div class="calendar-wrap">
+        <div class="cal-header">
+          <div class="cal-title">{{ month_name }} {{ year }}</div>
+          <div class="cal-nav">
+            <a class="btn-nav" href="?year={{ prev_year }}&month={{ prev_month }}">◀ Prev</a>
+            <a class="btn-nav" href="?year={{ next_year }}&month={{ next_month }}">Next ▶</a>
+            <a class="btn-nav" href="{% url 'doctor_hours' %}">Availability</a>
+            <a class="btn-nav" href="{% url 'doctor_home' %}">Back to Dashboard</a>
+          </div>
+        </div>
+      <div class="calendar">
+          <div class="dow">M</div><div class="dow">T</div><div class="dow">W</div><div class="dow">T</div><div class="dow">F</div><div class="dow">S</div><div class="dow">S</div>
+          {% for week in weeks %}
+            {% for d in week %}
+              <div class="cell {% if not d.in_month %}dim{% endif %} {% if d.total_slots and d.booked >= d.total_slots %}full{% endif %}">
+                <div class="date-num">{{ d.date.day }}</div>
+                {% if d.total_slots %}
+                  <div class="badge">{% if d.booked >= d.total_slots %}Full{% else %}{{ d.booked }}/{{ d.total_slots }}{% endif %}</div>
+                {% endif %}
+                {% if d.times %}<div class="slot">{{ d.times }}</div>{% endif %}
+              </div>
+            {% endfor %}
+          {% endfor %}
+        </div>
+      </div>
+      <div class="actions">
+        <a href="{% url 'doctor_home' %}" class="btn-secondary">Back to Dashboard</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

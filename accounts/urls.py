@@ -27,7 +27,24 @@ urlpatterns = [
     path('doctor/home/', views.doctor_home, name='doctor_home'),
     path('patient/home/', views.patient_home, name='patient_home'),
     path('pharmacy/home/', views.pharmacy_home, name='pharmacy_home'),
-    
+
+    # Doctor appointments
+    path('doctor/appointments/', views.doctor_appointments, name='doctor_appointments'),
+    path('doctor/appointments/new/', views.doctor_new_appointment, name='doctor_new_appointment'),
+    path('doctor/appointments/<int:appointment_id>/', views.doctor_appointment_detail, name='doctor_appointment_detail'),
+    path('doctor/appointments/<int:appointment_id>/edit/', views.doctor_appointment_edit, name='doctor_appointment_edit'),
+    path('doctor/appointments/<int:appointment_id>/cancel/', views.doctor_appointment_cancel, name='doctor_appointment_cancel'),
+    path('doctor/appointments/<int:appointment_id>/complete/', views.doctor_appointment_complete, name='doctor_appointment_complete'),
+
+    # Doctor patient search
+    path('doctor/search/', views.doctor_patient_search, name='doctor_patient_search'),
+
+    # Doctor full schedule calendar
+    path('doctor/schedule/', views.doctor_full_schedule, name='doctor_full_schedule'),
+
+    # Doctor availability management
+    path('doctor/hours/', views.doctor_hours, name='doctor_hours'),
+
     # Pharmacy dashboard & management
     path('pharmacy/home/', views.pharmacy_home, name='pharmacy_home'),
     path('pharmacy/add-medicine/', views.add_medicine, name='add_medicine'),

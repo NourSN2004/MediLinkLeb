@@ -4,15 +4,124 @@ from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import AuthenticationForm
 from django.shortcuts import render, redirect
 from django.utils import timezone
-from .models import Appointment, Patient, Doctor, User, Pharmacy, Stock, Medicine
+from .models import Appointment, Patient, Doctor, User, Pharmacy, Stock, Medicine, DoctorWorkingHours, DoctorTimeOff
 from .services import AuthenticationService
 from django.db.models import Q, Count, Sum
 from datetime import timedelta
 from django.db import transaction, IntegrityError
 from .forms import SignUpForm, ForgotPasswordForm, ResetPasswordForm, MedicineForm, StockForm, NewMedicineStockForm, StockUpdateForm
+from django.utils.dateparse import parse_date
+from django.urls import reverse
+from datetime import datetime, date
 import logging
+import calendar
 
 logger = logging.getLogger(__name__)
+
+from datetime import time as datetime_time, timedelta as datetime_timedelta
+
+
+def _snap_minutes(total: int, interval: int, direction: str) -> int:
+    total = max(0, total)
+    if direction == 'down':
+        return total - (total % interval)
+    remainder = total % interval
+    if remainder:
+        total += interval - remainder
+    return total
+
+
+def _round_time_component(value, interval: int = 15, direction: str = 'down') -> datetime_time:
+    """Snap a time (str or datetime.time) to the nearest interval."""
+    if isinstance(value, datetime_time):
+        total = value.hour * 60 + value.minute
+    else:
+        hour, minute = map(int, str(value).split(':')[:2])
+        total = hour * 60 + minute
+    total = _snap_minutes(total, interval, direction)
+    limit = 24 * 60 - interval
+    total = max(0, min(total, limit))
+    hour, minute = divmod(total, 60)
+    return datetime_time(hour, minute)
+
+
+def _round_dt(dt, interval: int = 15, direction: str = 'down'):
+    total = dt.hour * 60 + dt.minute
+    total = _snap_minutes(total, interval, direction)
+    if direction == 'up' and total >= 24 * 60:
+        return dt.replace(hour=0, minute=0, second=0, microsecond=0) + datetime_timedelta(days=1)
+    total = max(0, min(total, 24 * 60 - interval))
+    hour, minute = divmod(total, 60)
+    return dt.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+
+
+def _require_doctor(request):
+    if request.user.role != User.Role.DOCTOR:
+        return render(request, 'accounts/error.html', {
+            'message': 'This page is for doctors only.'
+        })
+    return None
+
+
+def _get_doctor_profile(user):
+    try:
+        return user.doctor
+    except Doctor.DoesNotExist:
+        return Doctor.objects.create(doctor_id=user, specialty='', license_number=None)
+
+
+def _available_slots_for_date(doctor: Doctor, the_date: date):
+    try:
+        dow = the_date.weekday() + 1  # Python Mon=0 -> our enum Mon=1
+        hours = DoctorWorkingHours.objects.get(doctor=doctor, day_of_week=dow)
+    except DoctorWorkingHours.DoesNotExist:
+        return None
+
+    tz = timezone.get_current_timezone()
+    start_dt = timezone.make_aware(datetime.combine(the_date, hours.start_time), tz)
+    end_dt = timezone.make_aware(datetime.combine(the_date, hours.end_time), tz)
+
+    start_dt = _round_dt(start_dt, 15, 'down')
+    end_dt = _round_dt(end_dt, 15, 'up')
+
+    if start_dt >= end_dt:
+        return []
+
+    slots = []
+    current = start_dt
+    while current < end_dt:
+        slots.append(current.strftime('%H:%M'))
+        current += timedelta(minutes=15)
+
+    # Remove already booked times
+    taken = set(
+        Appointment.objects.filter(
+            doctor=doctor,
+            date_time__date=the_date,
+            status=Appointment.Status.SCHEDULED,
+        ).values_list('date_time__hour', 'date_time__minute')
+    )
+    free_slots = [s for s in slots if (int(s[:2]), int(s[3:5])) not in taken]
+
+    # Remove personal time off blocks
+    offs = DoctorTimeOff.objects.filter(doctor=doctor, date=the_date)
+    if offs:
+        pruned = []
+        for s in free_slots:
+            hh, mm = map(int, s.split(':'))
+            slot_dt = timezone.make_aware(datetime(the_date.year, the_date.month, the_date.day, hh, mm), tz)
+            blocked = False
+            for off in offs:
+                off_start = timezone.make_aware(datetime(the_date.year, the_date.month, the_date.day, off.start_time.hour, off.start_time.minute), tz)
+                off_end = timezone.make_aware(datetime(the_date.year, the_date.month, the_date.day, off.end_time.hour, off.end_time.minute), tz)
+                if off_start <= slot_dt < off_end:
+                    blocked = True
+                    break
+            if not blocked:
+                pruned.append(s)
+        free_slots = pruned
+    return free_slots
 
 def home_redirect(request):
     """Route users to appropriate homepage based on their role"""
@@ -122,21 +231,12 @@ def doctor_home(request):
     today = timezone.localdate()
     
     # Check if user is actually a doctor by role
-    if request.user.role != User.Role.DOCTOR:
-        return render(request, 'accounts/error.html', {
-            'message': 'This page is for doctors only.'
-        })
+    bad = _require_doctor(request)
+    if bad:
+        return bad
     
     # Get or create Doctor profile if it doesn't exist
-    try:
-        doctor_profile = request.user.doctor
-    except Doctor.DoesNotExist:
-        # Auto-create Doctor profile if user has doctor role but no profile
-        doctor_profile = Doctor.objects.create(
-            doctor_id=request.user,
-            specialty='',
-            license_number=None
-        )
+    doctor_profile = _get_doctor_profile(request.user)
     
     # Get actual appointments for this doctor
     appointments_qs = Appointment.objects.filter(
@@ -148,6 +248,7 @@ def doctor_home(request):
     # Format for template
     appointments = [
         {
+            'id': appt.id,
             'name': appt.patient.patient_id.name,
             'time': appt.date_time.strftime('%I:%M %p'),
             'reason': appt.doctor_notes or 'General consultation'
@@ -155,10 +256,559 @@ def doctor_home(request):
         for appt in appointments_qs
     ]
     
+    # Notifications: missed appointments (today, not completed/cancelled)
+    now = timezone.now()
+    missed_qs = Appointment.objects.filter(
+        doctor=doctor_profile,
+        date_time__date=today,
+        date_time__lt=now,
+        status=Appointment.Status.SCHEDULED,
+    ).select_related('patient__patient_id').order_by('-date_time')
+    notifications = [
+        {
+            'text': f"Missed: {a.patient.patient_id.name} at {timezone.localtime(a.date_time).strftime('%I:%M %p')}",
+            'type': 'missed'
+        }
+        for a in missed_qs
+    ]
+
     return render(request, 'accounts/doctor_home.html', {
         'doctor_name': request.user.name or request.user.username,
         'today': today.strftime('%a, %b %d'),
         'appointments': appointments,
+        'notifications': notifications,
+    })
+
+
+@login_required
+def doctor_appointments(request):
+    bad = _require_doctor(request)
+    if bad:
+        return bad
+
+    doctor = _get_doctor_profile(request.user)
+    now = timezone.now()
+    today = timezone.localdate()
+    tab = request.GET.get('tab', 'today')
+
+    if tab == 'past':
+        qs = Appointment.objects.filter(
+            doctor=doctor,
+            date_time__lt=now,
+        ).exclude(status=Appointment.Status.CANCELLED)
+    elif tab == 'upcoming':
+        qs = Appointment.objects.filter(
+            doctor=doctor,
+            date_time__gte=now,
+            status=Appointment.Status.SCHEDULED,
+        )
+    else:  # today
+        qs = Appointment.objects.filter(
+            doctor=doctor,
+            date_time__date=today,
+        ).exclude(status=Appointment.Status.CANCELLED)
+
+    qs = qs.select_related('patient__patient_id').order_by('date_time')
+
+    appts = []
+    tz = timezone.get_current_timezone()
+    for a in qs:
+        appts.append({
+            'id': a.id,
+            'patient_name': a.patient.patient_id.name,
+            'patient_email': a.patient.patient_id.email,
+            'datetime': timezone.localtime(a.date_time, tz).strftime('%a, %b %d %I:%M %p'),
+            'status': a.status,
+        })
+
+    return render(request, 'accounts/doctor_appointments.html', {
+        'appointments': appts,
+        'tab': 'today' if tab == 'today' else ('past' if tab == 'past' else 'upcoming'),
+    })
+
+
+@login_required
+def doctor_new_appointment(request):
+    bad = _require_doctor(request)
+    if bad:
+        return bad
+
+    doctor = _get_doctor_profile(request.user)
+
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        time_str = request.POST.get('time')
+        patient_mode = request.POST.get('patient_mode', 'existing')
+        notes = request.POST.get('notes', '').strip()
+
+        if not date_str or not time_str:
+            messages.error(request, 'Please choose a valid date and time.')
+            return redirect('doctor_new_appointment')
+
+        try:
+            the_date = parse_date(date_str)
+            hour, minute = map(int, time_str.split(':'))
+            tz = timezone.get_current_timezone()
+            dt = timezone.make_aware(datetime(the_date.year, the_date.month, the_date.day, hour, minute), tz)
+        except Exception:
+            messages.error(request, 'Invalid date or time format.')
+            return redirect('doctor_new_appointment')
+
+        # Resolve patient
+        patient = None
+        if patient_mode == 'existing':
+            try:
+                pid = int(request.POST.get('patient_id'))
+                patient = Patient.objects.get(pk=pid)
+            except (TypeError, ValueError, Patient.DoesNotExist):
+                messages.error(request, 'Please select a valid patient.')
+                return redirect('doctor_new_appointment')
+        else:
+            new_email = request.POST.get('new_email', '').strip()
+            new_first = request.POST.get('new_first_name', '').strip()
+            new_last = request.POST.get('new_last_name', '').strip()
+            new_phone = request.POST.get('new_phone', '').strip()
+            new_national_id = request.POST.get('new_national_id', '').strip()
+
+            if not new_email:
+                messages.error(request, 'Email is required for a new patient.')
+                return redirect('doctor_new_appointment')
+
+            if User.objects.filter(email=new_email).exists():
+                messages.error(request, 'A user with this email already exists. Please select them as an existing patient.')
+                return redirect('doctor_new_appointment')
+
+            user = AuthenticationService.signup_user(
+                email=new_email,
+                password=User.objects.make_random_password(),
+                user_type=User.Role.PATIENT,
+                first_name=new_first,
+                last_name=new_last,
+            )
+            if not user:
+                messages.error(request, 'Could not create patient account.')
+                return redirect('doctor_new_appointment')
+
+            user.phone_number = new_phone
+            user.save()
+            patient = Patient.objects.create(patient_id=user, national_id=new_national_id)
+
+        # Check within availability window and avoid collisions and time off
+        avail_slots = _available_slots_for_date(doctor, dt.date())
+        if avail_slots is not None:
+            if dt.strftime('%H:%M') not in avail_slots:
+                messages.error(request, 'Selected time is outside your availability or blocked.')
+                return redirect('doctor_new_appointment')
+
+        # Check for collisions
+        if Appointment.objects.filter(doctor=doctor, date_time=dt, status=Appointment.Status.SCHEDULED).exists():
+            messages.error(request, 'This time is already booked. Please choose another slot.')
+            return redirect('doctor_new_appointment')
+
+        try:
+            Appointment.objects.create(
+                doctor=doctor,
+                patient=patient,
+                date_time=dt,
+                doctor_notes=notes,
+                status=Appointment.Status.SCHEDULED,
+            )
+            messages.success(request, 'Appointment created.')
+            return redirect(f"{reverse('doctor_appointments')}?tab=today")
+        except Exception as e:
+            logger.exception('Failed to create appointment')
+            messages.error(request, f'Error creating appointment: {e}')
+            return redirect('doctor_new_appointment')
+
+    # GET
+    q = request.GET.get('q', '').strip()
+    patients = Patient.objects.all().select_related('patient_id')
+    if q:
+        patients = patients.filter(
+            Q(patient_id__name__icontains=q) |
+            Q(patient_id__email__icontains=q) |
+            Q(patient_id__phone_number__icontains=q) |
+            Q(national_id__icontains=q)
+        )
+    patients = patients.order_by('patient_id__name')
+
+    selected_date = None
+    available_slots = None
+    date_q = request.GET.get('date')
+    if date_q:
+        try:
+            selected_date = parse_date(date_q)
+        except Exception:
+            selected_date = None
+        if selected_date:
+            available_slots = _available_slots_for_date(doctor, selected_date)
+
+    return render(request, 'accounts/doctor_new_appointment.html', {
+        'patients': patients,
+        'q': q,
+        'selected_date': selected_date,
+        'available_slots': available_slots,
+    })
+
+
+@login_required
+def doctor_appointment_edit(request, appointment_id: int):
+    bad = _require_doctor(request)
+    if bad:
+        return bad
+
+    doctor = _get_doctor_profile(request.user)
+    try:
+        appt = Appointment.objects.select_related('patient__patient_id').get(id=appointment_id, doctor=doctor)
+    except Appointment.DoesNotExist:
+        messages.error(request, 'Appointment not found.')
+        return redirect('doctor_appointments')
+
+    if request.method == 'POST':
+        date_str = request.POST.get('date')
+        time_str = request.POST.get('time')
+        notes = request.POST.get('notes', '').strip()
+        patient_phone = request.POST.get('patient_phone', '').strip()
+
+        try:
+            the_date = parse_date(date_str)
+            hour, minute = map(int, time_str.split(':'))
+            tz = timezone.get_current_timezone()
+            dt = timezone.make_aware(datetime(the_date.year, the_date.month, the_date.day, hour, minute), tz)
+        except Exception:
+            messages.error(request, 'Invalid date or time.')
+            return redirect('doctor_appointment_edit', appointment_id=appointment_id)
+
+        if Appointment.objects.filter(doctor=doctor, date_time=dt, status=Appointment.Status.SCHEDULED).exclude(id=appt.id).exists():
+            messages.error(request, 'Selected time is already booked.')
+            return redirect('doctor_appointment_edit', appointment_id=appointment_id)
+
+        appt.date_time = dt
+        appt.doctor_notes = notes
+        # Update patient's phone number if provided
+        if patient_phone:
+            try:
+                user = appt.patient.patient_id
+                if user.phone_number != patient_phone:
+                    user.phone_number = patient_phone
+                    user.save(update_fields=['phone_number'])
+            except Exception:
+                logger.exception('Failed to update patient phone')
+        appt.save()
+        messages.success(request, 'Appointment updated.')
+        return redirect('doctor_appointments')
+
+    selected_date = appt.date_time.date()
+    available_slots = _available_slots_for_date(doctor, selected_date)
+
+    return render(request, 'accounts/doctor_appointment_edit.html', {
+        'appointment': appt,
+        'selected_date': selected_date,
+        'available_slots': available_slots,
+    })
+
+
+@login_required
+def doctor_appointment_cancel(request, appointment_id: int):
+    bad = _require_doctor(request)
+    if bad:
+        return bad
+
+    doctor = _get_doctor_profile(request.user)
+    try:
+        appt = Appointment.objects.get(id=appointment_id, doctor=doctor)
+    except Appointment.DoesNotExist:
+        messages.error(request, 'Appointment not found.')
+        return redirect('doctor_appointments')
+
+    if request.method == 'POST':
+        appt.status = Appointment.Status.CANCELLED
+        appt.save()
+        messages.success(request, 'Appointment cancelled.')
+    return redirect('doctor_appointments')
+
+
+@login_required
+def doctor_appointment_detail(request, appointment_id: int):
+    bad = _require_doctor(request)
+    if bad:
+        return bad
+
+    doctor = _get_doctor_profile(request.user)
+    try:
+        appt = Appointment.objects.select_related('patient__patient_id').get(id=appointment_id, doctor=doctor)
+    except Appointment.DoesNotExist:
+        messages.error(request, 'Appointment not found.')
+        return redirect('doctor_appointments')
+
+    return render(request, 'accounts/doctor_appointment_detail.html', {
+        'appointment': appt,
+    })
+
+
+@login_required
+def doctor_appointment_complete(request, appointment_id: int):
+    bad = _require_doctor(request)
+    if bad:
+        return bad
+
+    doctor = _get_doctor_profile(request.user)
+    try:
+        appt = Appointment.objects.get(id=appointment_id, doctor=doctor)
+    except Appointment.DoesNotExist:
+        messages.error(request, 'Appointment not found.')
+        return redirect('doctor_appointments')
+
+    if request.method == 'POST':
+        appt.status = Appointment.Status.COMPLETED
+        appt.save(update_fields=['status'])
+        messages.success(request, 'Marked as done.')
+
+    # Redirect back to where user came from if possible
+    next_url = request.META.get('HTTP_REFERER') or reverse('doctor_appointments')
+    return redirect(next_url)
+
+
+@login_required
+def doctor_patient_search(request):
+    bad = _require_doctor(request)
+    if bad:
+        return bad
+
+    doctor = _get_doctor_profile(request.user)
+    q = (request.GET.get('q') or '').strip()
+    results = []
+
+    if q:
+        # Find patients by name/email/phone/national id
+        patients = Patient.objects.select_related('patient_id').filter(
+            Q(patient_id__name__icontains=q) |
+            Q(patient_id__email__icontains=q) |
+            Q(patient_id__phone_number__icontains=q) |
+            Q(national_id__icontains=q)
+        ).order_by('patient_id__name')[:50]
+
+        now = timezone.now()
+        for p in patients:
+            appts = Appointment.objects.filter(
+                doctor=doctor,
+                patient=p,
+                status=Appointment.Status.SCHEDULED,
+                date_time__gte=now,
+            ).order_by('date_time')
+            upcoming_count = appts.count()
+            next_time = appts.first().date_time if upcoming_count else None
+            results.append({
+                'id': p.pk,
+                'name': p.patient_id.name,
+                'email': p.patient_id.email,
+                'phone': p.patient_id.phone_number,
+                'upcoming_count': upcoming_count,
+                'next_time': timezone.localtime(next_time).strftime('%b %d, %I:%M %p') if next_time else None,
+            })
+
+    return render(request, 'accounts/patient_search.html', {
+        'q': q,
+        'results': results,
+    })
+
+
+@login_required
+def doctor_full_schedule(request):
+    bad = _require_doctor(request)
+    if bad:
+        return bad
+
+    doctor = _get_doctor_profile(request.user)
+
+    today = timezone.localdate()
+    # Parse month/year or date
+    sel_date = request.GET.get('date')
+    year = request.GET.get('year')
+    month = request.GET.get('month')
+
+    if sel_date:
+        try:
+            selected_date = parse_date(sel_date) or today
+        except Exception:
+            selected_date = today
+    else:
+        try:
+            selected_date = date(int(year), int(month), 1)
+        except Exception:
+            selected_date = date(today.year, today.month, 1)
+
+    month_first = date(selected_date.year, selected_date.month, 1)
+    _, month_days = calendar.monthrange(selected_date.year, selected_date.month)
+    month_last = date(selected_date.year, selected_date.month, month_days)
+
+    # Fetch all appts in month
+    month_qs = Appointment.objects.filter(
+        doctor=doctor,
+        date_time__date__gte=month_first,
+        date_time__date__lte=month_last,
+    ).exclude(status=Appointment.Status.CANCELLED).select_related('patient__patient_id')
+
+    # Group counts by date
+    counts = {}
+    times_by_date = {}
+    for a in month_qs:
+        d = a.date_time.date()
+        counts[d] = counts.get(d, 0) + 1
+        times_by_date.setdefault(d, []).append(timezone.localtime(a.date_time).strftime('%H:%M'))
+
+    # Build calendar weeks (Mon..Sun)
+    cal = calendar.Calendar(firstweekday=0)  # Monday
+    weeks = []
+    week = []
+    for d in cal.itermonthdates(selected_date.year, selected_date.month):
+        week.append({
+            'date': d,
+            'in_month': d.month == selected_date.month,
+            'count': counts.get(d, 0),
+            'times': ', '.join(sorted(times_by_date.get(d, []))) if d in times_by_date else '',
+            'is_today': d == today,
+            'is_selected': d == (parse_date(sel_date) if sel_date else today),
+        })
+        if len(week) == 7:
+            weeks.append(week)
+            week = []
+    if week:
+        weeks.append(week)
+
+    # Determine selected day to show log
+    show_date = parse_date(sel_date) if sel_date else today
+    day_qs = Appointment.objects.filter(
+        doctor=doctor,
+        date_time__date=show_date,
+    ).exclude(status=Appointment.Status.CANCELLED).select_related('patient__patient_id').order_by('date_time')
+
+    day_appts = [
+        {
+            'id': a.id,
+            'name': a.patient.patient_id.name,
+            'email': a.patient.patient_id.email,
+            'time': timezone.localtime(a.date_time).strftime('%I:%M %p'),
+            'reason': a.doctor_notes or 'General consultation',
+            'status': a.status,
+        }
+        for a in day_qs
+    ]
+
+    # Prev/next month
+    prev_month = (month_first.replace(day=1) - timedelta(days=1)).replace(day=1)
+    next_month = (month_last + timedelta(days=1)).replace(day=1)
+
+    ctx = {
+        'year': selected_date.year,
+        'month': selected_date.month,
+        'month_name': month_first.strftime('%B'),
+        'weeks': weeks,
+        'selected_date': show_date,
+        'day_appts': day_appts,
+        'prev_year': prev_month.year,
+        'prev_month': prev_month.month,
+        'next_year': next_month.year,
+        'next_month': next_month.month,
+    }
+    return render(request, 'accounts/doctor_full_schedule.html', ctx)
+
+
+@login_required
+def doctor_hours(request):
+    bad = _require_doctor(request)
+    if bad:
+        return bad
+
+    doctor = _get_doctor_profile(request.user)
+    today = timezone.localdate()
+
+    if request.method == 'POST':
+        form_kind = request.POST.get('form', 'hours')
+
+        if form_kind == 'hours':
+            # Save weekly hours
+            for num, name in DoctorWorkingHours.DayOfWeek.choices:
+                active = request.POST.get(f'active_{num}')
+                start = request.POST.get(f'start_{num}')
+                end = request.POST.get(f'end_{num}')
+
+                # remove if not active or missing times
+                if not active or not start or not end:
+                    DoctorWorkingHours.objects.filter(doctor=doctor, day_of_week=num).delete()
+                    continue
+
+                # Validate order
+                try:
+                    sh, sm = map(int, start.split(':'))
+                    eh, em = map(int, end.split(':'))
+                    if (eh, em) <= (sh, sm):
+                        messages.error(request, f"{name}: End time must be after start time.")
+                        continue
+                except Exception:
+                    messages.error(request, f"{name}: Invalid time format.")
+                    continue
+
+                start = _round_time_component(start, 15, 'down')
+                end = _round_time_component(end, 15, 'up')
+
+                # create/update
+                DoctorWorkingHours.objects.update_or_create(
+                    doctor=doctor,
+                    day_of_week=num,
+                    defaults={'start_time': start, 'end_time': end}
+                )
+
+            messages.success(request, 'Availability saved.')
+            return redirect('doctor_hours')
+
+        elif form_kind == 'timeoff':
+            date_str = request.POST.get('to_date')
+            start = request.POST.get('to_start')
+            end = request.POST.get('to_end')
+            reason = request.POST.get('to_reason', '').strip()
+            try:
+                d = parse_date(date_str)
+                if not d or not start or not end:
+                    raise ValueError('Please fill date, start and end')
+                start_time = _round_time_component(start, 15, 'down')
+                end_time = _round_time_component(end, 15, 'up')
+                if end_time <= start_time:
+                    raise ValueError('End time must be after start time')
+                DoctorTimeOff.objects.create(doctor=doctor, date=d, start_time=start_time, end_time=end_time, reason=reason)
+                messages.success(request, 'Time off added.')
+            except Exception as e:
+                messages.error(request, f'Could not add time off: {e}')
+            return redirect('doctor_hours')
+
+        elif form_kind == 'delete_timeoff':
+            try:
+                tid = int(request.POST.get('to_id'))
+                DoctorTimeOff.objects.filter(id=tid, doctor=doctor).delete()
+                messages.success(request, 'Time off removed.')
+            except Exception:
+                messages.error(request, 'Could not remove time off.')
+            return redirect('doctor_hours')
+
+    # GET
+    # Build weekly days state
+    days = []
+    existing = {h.day_of_week: h for h in DoctorWorkingHours.objects.filter(doctor=doctor)}
+    for num, name in DoctorWorkingHours.DayOfWeek.choices:
+        h = existing.get(num)
+        days.append({
+            'num': num,
+            'name': name,
+            'active': bool(h),
+            'start': h.start_time.strftime('%H:%M') if h else '',
+            'end': h.end_time.strftime('%H:%M') if h else '',
+        })
+
+    timeoffs = DoctorTimeOff.objects.filter(doctor=doctor, date__gte=today).order_by('date', 'start_time')
+    return render(request, 'accounts/doctor_hours.html', {
+        'days': days,
+        'timeoffs': timeoffs,
+        'today': today,
     })
 
 
@@ -757,3 +1407,5 @@ def reset_password(request, token):
         form = ResetPasswordForm()
     
     return render(request, 'accounts/reset_password.html', {'form': form, 'token': token})
+
+

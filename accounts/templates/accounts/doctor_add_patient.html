@@ -1,0 +1,49 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add Patient</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <style>
+    .form { display:grid; gap:.9rem; }
+    .group { display:grid; grid-template-columns: 1fr 1fr; gap:.6rem; }
+    .input { width:100%; padding:.6rem .7rem; border:1px solid var(--line); background:var(--input-bg); border-radius:10px; }
+    .actions { display:flex; gap:.6rem; margin-top:1rem; }
+    .btn { padding:.6rem .9rem; border-radius:10px; border:1px solid var(--line); background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; font-weight:800; cursor:pointer; }
+    .btn-secondary { padding:.6rem .9rem; border-radius:10px; border:1px solid var(--line); background:var(--btn-secondary-bg); color:var(--ink); font-weight:800; text-decoration:none; display:inline-grid; place-items:center; }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card" style="max-width:680px; margin:0 auto;">
+      {% if messages %}
+        <div class="messages">
+          {% for message in messages %}
+            <div class="message message-{{ message.tags }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+      <h1 class="auth-title">Add Patient</h1>
+      <p class="auth-subtitle">Create a new patient record you can book appointments with.</p>
+      <form method="post" class="form">
+        {% csrf_token %}
+        <div class="group">
+          <input class="input" type="text" name="first_name" placeholder="First name">
+          <input class="input" type="text" name="last_name" placeholder="Last name">
+        </div>
+        <div class="group">
+          <input class="input" type="email" name="email" placeholder="Email" required>
+          <input class="input" type="text" name="phone" placeholder="Phone (optional)">
+        </div>
+        <input class="input" type="text" name="national_id" placeholder="National ID (optional)">
+        <div class="actions">
+          <button type="submit" class="btn">Add Patient</button>
+          <a href="{% url 'doctor_home' %}" class="btn-secondary">Back to Dashboard</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

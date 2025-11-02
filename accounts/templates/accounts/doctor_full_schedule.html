@@ -1,0 +1,121 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Full Schedule</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <style>
+    body { background: var(--bg); }
+    /* Make page fuller but compact */
+    .auth-container{ max-width: 1200px; }
+    .wrap{ max-width:1200px; margin:0 auto; }
+    .hero{ text-align:center; margin-bottom:.5rem; }
+    .hero .auth-title{ margin:0 0 .2rem; letter-spacing:.3px; }
+    .hero .auth-subtitle{ margin:0; color:var(--ink-dim); font-size:.95rem; }
+    .hero .accent{ width:140px; height:4px; border-radius:999px; background:linear-gradient(90deg,var(--brand1),var(--brand2)); margin:.45rem auto 0; box-shadow:0 6px 16px rgba(2,132,199,.18); }
+
+    .cal-header{ display:flex; align-items:center; justify-content:space-between; margin:.2rem 0 .55rem; }
+    .title{ font-size:1.12rem; font-weight:900; letter-spacing:.2px; }
+    .nav{ display:flex; gap:.4rem; }
+    .btn-nav{ border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:10px; padding:.35rem .55rem; text-decoration:none; font-weight:800; }
+    .layout{ display:grid; grid-template-columns: 1.1fr 0.9fr; gap:.8rem; align-items:start; }
+    @media (max-width: 1024px){ .layout{ grid-template-columns: 1fr; } }
+    .calendar{ display:grid; grid-template-columns: repeat(7, 1fr); gap:.32rem; }
+    .dow{ text-align:center; color:var(--ink-dim); font-weight:800; }
+    .cell{ min-height:56px; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:.30rem; position:relative; transition:transform .08s ease, box-shadow .15s ease; text-decoration:none; color:inherit; display:block; }
+    .cell:hover{ box-shadow:0 6px 16px rgba(2,132,199,.12); transform:translateY(-1px); }
+    .cell.dim{ opacity:.45; }
+    .num{ font-weight:800; font-size:.76rem; color:var(--ink-dim); }
+    .badge{ position:absolute; right:.3rem; top:.3rem; font-size:.62rem; padding:.09rem .32rem; border-radius:999px; border:1px solid var(--line-2); background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; }
+    /* Appointment indicator bar */
+    .dash{ position:absolute; left:.4rem; right:.4rem; bottom:.36rem; height:2px; border-radius:999px; background:linear-gradient(90deg,var(--brand1),var(--brand2)); }
+    .today{ outline:3px solid rgba(2,132,199,.25); }
+    .selected{ box-shadow: inset 0 0 0 2px var(--brand2); }
+    .log{ background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; box-shadow:var(--shadow); }
+    .row{ display:grid; grid-template-columns: 1.5fr auto auto minmax(180px, 1fr); gap:.35rem; padding:.36rem .46rem; border-bottom:1px solid var(--line); align-items:center; }
+    .row.head{ background:linear-gradient(90deg, rgba(14,165,164,.08), rgba(2,132,199,.08)); color:var(--ink-dim); font-weight:800; }
+    .row:last-child{ border-bottom:0; }
+    .pill{ display:inline-block; padding:.1rem .34rem; border-radius:999px; font-size:.66rem; font-weight:800; }
+    .pill.status-scheduled{ background:#dcfce7; color:#166534; border:1px solid #bbf7d0; }
+    .pill.status-cancelled{ background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
+    .pill.status-completed{ background:#e0e7ff; color:#3730a3; border:1px solid #c7d2fe; }
+    .btn{ padding:.18rem .34rem; border-radius:10px; border:1px solid var(--line); text-decoration:none; font-weight:800; font-size:.7rem; }
+    .btn.edit{ background:#eef7ff; border-color:#cde5ff; color:#0b1221; }
+    .btn.cancel{ background:#fee2e2; border-color:#fecaca; color:#991b1b; }
+    .actions{ display:flex; flex-wrap:wrap; gap:.25rem .25rem; justify-content:flex-end; align-items:center; white-space:nowrap; }
+    .actions form{ display:inline; }
+    .timecell, .statuscell{ white-space:nowrap; }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card wrap">
+      <div class="hero">
+        <h1 class="auth-title">Full Schedule</h1>
+        <p class="auth-subtitle">Pick a day to see appointments.</p>
+        <div class="accent" aria-hidden="true"></div>
+      </div>
+
+      <div class="cal-header">
+        <div class="title">{{ month_name }} {{ year }}</div>
+        <div class="nav">
+          <a class="btn-nav" href="?year={{ prev_year }}&month={{ prev_month }}">Prev</a>
+          <a class="btn-nav" href="?year={{ next_year }}&month={{ next_month }}">Next</a>
+          <a class="btn-nav" href="{% url 'doctor_home' %}">Dashboard</a>
+        </div>
+      </div>
+
+      <div class="layout">
+      <div>
+      <div class="calendar">
+        <div class="dow">Mon</div><div class="dow">Tue</div><div class="dow">Wed</div><div class="dow">Thu</div><div class="dow">Fri</div><div class="dow">Sat</div><div class="dow">Sun</div>
+        {% for week in weeks %}
+          {% for d in week %}
+            <a class="cell {% if not d.in_month %}dim{% endif %} {% if d.is_today %}today{% endif %} {% if d.is_selected %}selected{% endif %}" href="?date={{ d.date|date:'Y-m-d' }}">
+              <div class="num">{{ d.date.day }}</div>
+              {% if d.count %}
+                <div class="badge">{{ d.count }}</div>
+                <div class="dash" aria-hidden="true"></div>
+              {% endif %}
+            </a>
+          {% endfor %}
+        {% endfor %}
+      </div>
+      </div>
+
+      <div class="log">
+        <div class="row head"><div>Patient</div><div>Time</div><div>Status</div><div style="text-align:right;">Actions</div></div>
+        {% for a in day_appts %}
+          <div class="row">
+            <div>
+              <div style="font-weight:800">{{ a.name }}</div>
+              <div style="color:var(--ink-dim); font-size:.9rem;">{{ a.reason }}</div>
+            </div>
+            <div class="timecell" style="font-size:.92em;">{{ a.time }}</div>
+            <div class="statuscell"><span class="pill status-{{ a.status }}">{{ a.status|title }}</span></div>
+            <div class="actions">
+              <a class="btn" href="{% url 'doctor_appointment_detail' a.id %}">View</a>
+              <a class="btn edit" href="{% url 'doctor_appointment_edit' a.id %}">Edit</a>
+              {% if a.status != 'completed' %}
+              <form method="post" action="{% url 'doctor_appointment_complete' a.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn" style="background:#dcfce7;border-color:#bbf7d0;color:#166534;">Done</button>
+              </form>
+              {% endif %}
+              <form method="post" action="{% url 'doctor_appointment_cancel' a.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn cancel">{% if a.status == 'completed' %}Delete{% else %}Cancel{% endif %}</button>
+              </form>
+            </div>
+          </div>
+        {% empty %}
+          <div class="row"><div style="grid-column:1/-1; color:var(--ink-dim);">No appointments this day.</div></div>
+        {% endfor %}
+      </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

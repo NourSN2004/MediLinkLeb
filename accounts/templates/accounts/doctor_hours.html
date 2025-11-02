@@ -1,0 +1,221 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edit Availability</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <style>
+    body {
+      background: var(--bg);
+      background-image:
+        radial-gradient(1200px 600px at 10% -5%, rgba(14,165,164,0.08), transparent 60%),
+        radial-gradient(1000px 500px at 110% 10%, rgba(2,132,199,0.08), transparent 60%);
+    }
+
+    .auth-card { max-width: 720px; margin: 0 auto; }
+
+    .hero { text-align:center; margin-bottom:1.1rem; }
+    .hero .auth-title { margin:0 0 .25rem; }
+    .hero .auth-subtitle { margin:0; color:var(--ink-dim); }
+    .hero .accent { width:140px; height:4px; border-radius:999px; background:linear-gradient(90deg,var(--brand1),var(--brand2)); margin:.6rem auto 0; box-shadow:0 6px 16px rgba(2,132,199,.18); }
+
+    .availability-grid { display:grid; gap:1rem; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); }
+    .day-card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:1rem; box-shadow:0 2px 6px rgba(15,23,42,.08); display:flex; flex-direction:column; gap:.75rem; }
+    .day-head { display:flex; justify-content:space-between; align-items:center; }
+    .day-name { font-weight:800; font-size:1rem; }
+    .toggle { display:flex; align-items:center; gap:.45rem; }
+    .input-toggle { width:44px; height:24px; appearance:none; -webkit-appearance:none; background:#e2e8f0; border-radius:999px; position:relative; outline:none; cursor:pointer; border:1px solid var(--line-2); }
+    .input-toggle::after { content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:transform .2s ease; }
+    .input-toggle:checked { background:linear-gradient(135deg,var(--brand1),var(--brand2)); border-color:transparent; }
+    .input-toggle:checked::after { transform:translateX(20px); }
+    .pill { display:inline-block; padding:.16rem .55rem; border-radius:999px; font-weight:800; font-size:.75rem; border:1px solid var(--line); background:#f1f5f9; color:#0b1221; min-width:48px; text-align:center; }
+    .pill.on { background:#dcfce7; border-color:#bbf7d0; color:#166534; }
+
+    .time-row { display:grid; grid-template-columns:repeat(2,1fr); gap:.6rem; }
+    .field-inline { display:flex; align-items:center; gap:.45rem; justify-content:space-between; }
+    .field-inline span { font-size:.82rem; font-weight:600; color:var(--ink-dim); }
+    .input { width:100%; padding:.6rem .7rem; border:1px solid var(--line); background:var(--input-bg); border-radius:10px; }
+    .input:disabled { opacity:.45; cursor:not-allowed; }
+    .input.on { border-color:#86efac; box-shadow:0 0 0 3px rgba(34,197,94,.15); }
+
+    .actions { display:flex; flex-wrap:wrap; gap:.6rem; margin-top:1.2rem; }
+    .btn { padding:.6rem .9rem; border-radius:10px; border:1px solid var(--line); background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; font-weight:800; cursor:pointer; }
+    .btn:hover { filter:brightness(1.03); }
+    .btn-secondary { padding:.6rem .9rem; border-radius:10px; border:1px solid var(--line); background:var(--btn-secondary-bg); color:var(--ink); font-weight:800; text-decoration:none; display:inline-grid; place-items:center; }
+
+    .sub-note { color:var(--ink-dim); font-size:.9rem; margin-top:.9rem; }
+
+    .timeoff-card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:.95rem; box-shadow:0 2px 6px rgba(15,23,42,.08); margin-top:1rem; }
+    .timeoff-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:.75rem; }
+    .timeoff-grid label { display:flex; flex-direction:column; gap:.3rem; }
+    .timeoff-grid span { font-size:.88rem; font-weight:600; color:var(--ink); }
+    @media (max-width:520px){
+      .time-row { grid-template-columns:1fr; }
+      .timeoff-grid { grid-template-columns:1fr; }
+    }
+
+    .timeoff-list { margin-top:1rem; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+    .timeoff-item { display:flex; align-items:center; justify-content:space-between; gap:.6rem; padding:.6rem .8rem; border-bottom:1px solid var(--line); }
+    .timeoff-item:last-child { border-bottom:0; }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      {% if messages %}
+        <div class="messages">
+          {% for message in messages %}
+            <div class="message message-{{ message.tags }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <div class="hero">
+        <h1 class="auth-title">Add / Edit Availability</h1>
+        <p class="auth-subtitle">Set your weekly hours for patient bookings. Toggle days on, then pick start/end.</p>
+        <div class="accent" aria-hidden="true"></div>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="form" value="hours">
+
+        <div class="availability-grid">
+          {% for d in days %}
+            <div class="day-card">
+              <div class="day-head">
+                <div class="day-name">{{ d.name }}</div>
+                <label class="toggle" title="Toggle availability for {{ d.name }}">
+                  <input class="input-toggle" type="checkbox" name="active_{{ d.num }}" id="active_{{ d.num }}" {% if d.active %}checked{% endif %}>
+                  <span class="pill" id="stat_{{ d.num }}">{{ d.active|yesno:"On,Off" }}</span>
+                </label>
+              </div>
+              <div class="time-row">
+                <label class="field-inline">
+                  <span>Start</span>
+                  <input class="input time-input" type="time" step="900" name="start_{{ d.num }}" id="start_{{ d.num }}" value="{{ d.start }}" placeholder="09:00">
+                </label>
+                <label class="field-inline">
+                  <span>End</span>
+                  <input class="input time-input" type="time" step="900" name="end_{{ d.num }}" id="end_{{ d.num }}" value="{{ d.end }}" placeholder="17:00">
+                </label>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn">Save Availability</button>
+          <button type="button" class="btn-secondary" id="preset95">Mon-Fri 09:00-17:00</button>
+          <button type="button" class="btn-secondary" id="clearAll">Clear all</button>
+        </div>
+      </form>
+
+      <p class="sub-note">New appointments allow 30-minute slots within your hours. Personal time off blocks override weekly hours.</p>
+
+      <h2 class="auth-title" style="margin-top:1.4rem; font-size:1.05rem;">Personal Time Off</h2>
+      <p class="auth-subtitle">Block specific dates so patients cannot book during these times.</p>
+
+      <form method="post" class="timeoff-card">
+        {% csrf_token %}
+        <input type="hidden" name="form" value="timeoff">
+        <div class="timeoff-grid">
+          <label>
+            <span>Date</span>
+            <input class="input" type="date" name="to_date" min="{{ today }}" required>
+          </label>
+          <label>
+            <span>Start time</span>
+            <input class="input" type="time" step="900" name="to_start" required placeholder="14:00">
+          </label>
+          <label>
+            <span>End time</span>
+            <input class="input" type="time" step="900" name="to_end" required placeholder="16:00">
+          </label>
+          <label>
+            <span>Reason</span>
+            <input class="input" type="text" name="to_reason" placeholder="Optional (e.g., Conference)">
+          </label>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn">Add Time Off</button>
+        </div>
+      </form>
+
+      {% if timeoffs %}
+        <div class="auth-subtitle" style="margin-top:1rem;">Upcoming time off</div>
+        <div class="timeoff-list">
+          {% for t in timeoffs %}
+            <div class="timeoff-item">
+              <div>
+                <div style="font-weight:800;">{{ t.date }} &mdash; {{ t.start_time|time:'H:i' }}–{{ t.end_time|time:'H:i' }}</div>
+                {% if t.reason %}<div style="color:var(--ink-dim); font-size:.9rem;">{{ t.reason }}</div>{% endif %}
+              </div>
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="form" value="delete_timeoff">
+                <input type="hidden" name="to_id" value="{{ t.id }}">
+                <button class="btn-secondary" type="submit">Remove</button>
+              </form>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <div class="actions" style="justify-content:flex-end;">
+        <a href="{% url 'doctor_home' %}" class="btn-secondary">Back to Dashboard</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function syncRow(num){
+      const active = document.getElementById('active_'+num);
+      const start = document.getElementById('start_'+num);
+      const end = document.getElementById('end_'+num);
+      const stat = document.getElementById('stat_'+num);
+      const on = active && active.checked;
+      if(start){ start.disabled = !on; start.classList.toggle('on', on); }
+      if(end){ end.disabled = !on; end.classList.toggle('on', on); }
+      if(stat){ stat.textContent = on ? 'On' : 'Off'; stat.classList.toggle('on', on); }
+    }
+
+    const dayNums = [1,2,3,4,5,6,7];
+    dayNums.forEach(n => {
+      const c = document.getElementById('active_'+n);
+      if(c){ c.addEventListener('change', () => syncRow(n)); syncRow(n); }
+    });
+
+    const preset = document.getElementById('preset95');
+    if(preset){
+      preset.addEventListener('click', () => {
+        [1,2,3,4,5].forEach(n => {
+          const c=document.getElementById('active_'+n); if(c){ c.checked = true; }
+          const s=document.getElementById('start_'+n); if(s){ s.value='09:00'; s.disabled=false; s.classList.add('on'); }
+          const e=document.getElementById('end_'+n); if(e){ e.value='17:00'; e.disabled=false; e.classList.add('on'); }
+          const stat=document.getElementById('stat_'+n); if(stat){ stat.textContent='On'; stat.classList.add('on'); }
+        });
+        [6,7].forEach(n => {
+          const c=document.getElementById('active_'+n); if(c){ c.checked=false; }
+          syncRow(n);
+        });
+      });
+    }
+
+    const clearAll = document.getElementById('clearAll');
+    if(clearAll){
+      clearAll.addEventListener('click', () => {
+        dayNums.forEach(n => {
+          const c=document.getElementById('active_'+n); if(c){ c.checked=false; }
+          const s=document.getElementById('start_'+n); if(s){ s.value=''; }
+          const e=document.getElementById('end_'+n); if(e){ e.value=''; }
+          syncRow(n);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
+
