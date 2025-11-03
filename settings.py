@@ -1,13 +1,15 @@
 from pathlib import Path
+import os
 
 # ------------------------------------------------
 # BASE SETUP
 # ------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent
 
-SECRET_KEY = "dev-secret-key-change-this"
-DEBUG = True
-ALLOWED_HOSTS = []
+SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-this")
+DEBUG = os.environ.get("DEBUG", "True").lower() in {"1", "true", "yes"}
+raw_allowed_hosts = os.environ.get("ALLOWED_HOSTS", "")
+ALLOWED_HOSTS = [host.strip() for host in raw_allowed_hosts.split(",") if host.strip()]
 
 
 # ------------------------------------------------
@@ -135,7 +137,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # -----------------------------
 # MEDIA CONFIGURATION
 # -----------------------------
-import os
 
 MEDIA_URL = '/media/'  # URL prefix for accessing uploaded files
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Actual folder where uploads will be stored
@@ -146,7 +147,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Actual folder where uploads will
 AUTH_USER_MODEL = 'accounts.User'
 
 # Email Configuration (add this section)
-SITE_URL = 'http://localhost:8000'  # Change this to your domain in production
+SITE_URL = os.environ.get('SITE_URL', 'http://localhost:8000')  # Change this to your domain in production
 DEFAULT_FROM_EMAIL = 'noreply@medilink.com'
 
 # For development, use console email backend (emails print to console)
