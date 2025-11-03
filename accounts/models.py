@@ -143,6 +143,19 @@ class Stock(models.Model):
 # -----------------------------
 # 8) APPOINTMENT (Doctor ↔ Patient)
 # -----------------------------
+class PharmacistStaff(models.Model):
+    pharmacy = models.ForeignKey(Pharmacy, on_delete=models.CASCADE, related_name="staff")
+    name = models.CharField(max_length=120)
+    email = models.EmailField()
+    phone = models.CharField(max_length=30, blank=True)
+
+    class Meta:
+        unique_together = ("pharmacy", "email")
+
+    def __str__(self):
+        return f"{self.name} ({self.email})"
+
+
 class Appointment(models.Model):
     # Appointment status options
     class Status(models.TextChoices):
