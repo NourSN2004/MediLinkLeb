@@ -30,4 +30,4 @@ ENV DJANGO_SETTINGS_MODULE=settings \
 EXPOSE 8000
 
 # Run DB migrations, then start Gunicorn. Use $PORT if provided (Render), else 8000 locally.
-CMD ["sh","-c","python manage.py migrate --noinput && gunicorn wsgi:application --bind 0.0.0.0:${PORT:-8000}"]
+CMD ["sh","-c","python manage.py migrate --noinput && python manage.py bootstrap && gunicorn wsgi:application --bind 0.0.0.0:${PORT:-8000}"]
