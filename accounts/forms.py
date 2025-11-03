@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from .models import Medicine, Stock
+from .models import Medicine, Stock, PharmacistStaff
 from django.core.exceptions import ValidationError
 
 User = get_user_model()
@@ -228,4 +228,23 @@ class StockUpdateForm(forms.ModelForm):
                 'type': 'date',
                 'required': True
             }),
+        }
+
+
+class PharmacySettingsForm(forms.Form):
+    pharmacy_name = forms.CharField(
+        max_length=120,
+        label='Pharmacy Name',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., GreenLife Pharmacy'})
+    )
+
+
+class PharmacistStaffForm(forms.ModelForm):
+    class Meta:
+        model = PharmacistStaff
+        fields = ['name', 'email', 'phone']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Full name'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'name@example.com'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Optional phone'}),
         }

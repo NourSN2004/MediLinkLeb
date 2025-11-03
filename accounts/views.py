@@ -4,12 +4,12 @@ from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import AuthenticationForm
 from django.shortcuts import render, redirect
 from django.utils import timezone
-from .models import Appointment, Patient, Doctor, User, Pharmacy, Stock, Medicine, DoctorWorkingHours, DoctorTimeOff
+from .models import Appointment, Patient, Doctor, User, Pharmacy, Stock, Medicine, DoctorWorkingHours, DoctorTimeOff, PharmacistStaff
 from .services import AuthenticationService
 from django.db.models import Q, Count, Sum, Prefetch
 from datetime import timedelta
 from django.db import transaction, IntegrityError
-from .forms import SignUpForm, ForgotPasswordForm, ResetPasswordForm, MedicineForm, StockForm, NewMedicineStockForm, StockUpdateForm
+from .forms import SignUpForm, ForgotPasswordForm, ResetPasswordForm, MedicineForm, StockForm, NewMedicineStockForm, StockUpdateForm, PharmacySettingsForm, PharmacistStaffForm
 from django.utils.dateparse import parse_date
 from django.urls import reverse
 from datetime import datetime, date
@@ -1108,6 +1108,89 @@ def populate_pharmacies(request):
     # Return user to pharmacy dashboard or home
     return redirect('pharmacy_home')
 
+# ============================================================================
+# PHARMACY SETTINGS (name + staff management)
+# ============================================================================
+
+@login_required
+def pharmacy_settings(request):
+    if request.user.role != User.Role.PHARMACY and not request.user.is_superuser:
+        return render(request, 'accounts/error.html', {
+            'message': 'This page is for pharmacies only.'
+        })
+
+    # Get or create the Pharmacy profile
+    try:
+        pharmacy = request.user.pharmacy
+    except Pharmacy.DoesNotExist:
+        pharmacy = Pharmacy.objects.create(pharmacy_id=request.user, license_number=None, address='')
+
+    name_form = PharmacySettingsForm(initial={'pharmacy_name': request.user.name})
+    staff_form = PharmacistStaffForm()
+
+    if request.method == 'POST':
+        which = request.POST.get('which')
+        if which == 'name':
+            name_form = PharmacySettingsForm(request.POST)
+            if name_form.is_valid():
+                request.user.name = name_form.cleaned_data['pharmacy_name']
+                request.user.save()
+                messages.success(request, 'Pharmacy name updated.')
+                return redirect('pharmacy_settings')
+        elif which == 'staff':
+            staff_form = PharmacistStaffForm(request.POST)
+            if staff_form.is_valid():
+                PharmacistStaff.objects.create(
+                    pharmacy=pharmacy,
+                    **staff_form.cleaned_data
+                )
+                messages.success(request, 'Pharmacist added.')
+                return redirect('pharmacy_settings')
+
+    staff = pharmacy.staff.order_by('name')
+    return render(request, 'accounts/pharmacy_settings.html', {
+        'pharmacy_name': pharmacy.pharmacy_id.name,
+        'name_form': name_form,
+        'staff_form': staff_form,
+        'staff': staff,
+    })
+
+
+@login_required
+def edit_pharmacist(request, staff_id: int):
+    if request.user.role != User.Role.PHARMACY and not request.user.is_superuser:
+        return render(request, 'accounts/error.html', {'message': 'This page is for pharmacies only.'})
+    staff_member = PharmacistStaff.objects.filter(id=staff_id, pharmacy__pharmacy_id=request.user).first()
+    if not staff_member:
+        return render(request, 'accounts/error.html', {'message': 'Pharmacist not found.'})
+
+    if request.method == 'POST':
+        form = PharmacistStaffForm(request.POST, instance=staff_member)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Pharmacist updated.')
+            return redirect('pharmacy_settings')
+    else:
+        form = PharmacistStaffForm(instance=staff_member)
+
+    return render(request, 'accounts/pharmacist_form.html', {
+        'form': form,
+        'title': 'Edit Pharmacist',
+    })
+
+
+@login_required
+@require_POST
+def delete_pharmacist(request, staff_id: int):
+    if request.user.role != User.Role.PHARMACY and not request.user.is_superuser:
+        return render(request, 'accounts/error.html', {'message': 'This action is for pharmacies only.'})
+    staff_member = PharmacistStaff.objects.filter(id=staff_id, pharmacy__pharmacy_id=request.user).first()
+    if not staff_member:
+        messages.error(request, 'Pharmacist not found.')
+        return redirect('pharmacy_settings')
+    staff_member.delete()
+    messages.success(request, 'Pharmacist deleted.')
+    return redirect('pharmacy_settings')
 # ============================================================================
 # PHARMACY MEDICINE MANAGEMENT VIEWS
 # ============================================================================

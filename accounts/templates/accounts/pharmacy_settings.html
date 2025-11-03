@@ -1,0 +1,173 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pharmacy Settings - {{ pharmacy_name }}</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <style>
+    :root {
+      --sidebar-w: 260px;
+      --transition: .25s ease;
+      --brand1: #10b981;
+      --brand2: #059669;
+      --focus: rgba(16, 185, 129, .25);
+    }
+    html, body { height: 100%; margin: 0; background: #f8fafc; }
+
+    .app { height: 100vh; width: 100vw; display: grid; grid-template-columns: var(--sidebar-w) 1fr; transition: var(--transition); overflow: hidden; }
+    .sidebar { background: #fff; border-right: 1px solid var(--line); display: flex; flex-direction: column; overflow: hidden; }
+    .brand { display: flex; align-items: center; gap: .6rem; padding: 1rem; border-bottom: 1px solid var(--line); }
+    .brand .logo { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: linear-gradient(135deg, var(--brand1), var(--brand2)); color: #fff; font-weight: 800; }
+    .brand h1 { font-size: 1.05rem; margin: 0; letter-spacing: .2px; }
+
+    .side-section { padding: .75rem 1rem; }
+    .side-title { font-size: .8rem; font-weight: 800; color: var(--ink-dim); margin: .4rem 0 .3rem; }
+    .nav { display: flex; flex-direction: column; gap: .4rem; }
+    .nav a { display: flex; align-items: center; gap: .55rem; padding: .7rem .6rem; border-radius: 10px; color: var(--ink); text-decoration: none; border: 1px solid transparent; }
+    .nav a:hover { background: #f1f5f9; border-color: var(--line); }
+    .nav a.primary { background: linear-gradient(135deg, var(--brand1), var(--brand2)); color: #fff; }
+
+    .main { display: grid; grid-template-rows: 56px 1fr; overflow: hidden; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; padding: .6rem 1rem; background: #fff; border-bottom: 1px solid var(--line); }
+    .top-title { font-weight: 800; }
+    .avatar { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; background: #e2e8f0; font-weight: 800; color: #334155; }
+
+    .content { padding: 1rem; overflow: auto; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .panel { background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    .panel .head { display: flex; justify-content: space-between; align-items: center; padding: .9rem 1rem; border-bottom: 1px solid var(--line); }
+    .panel .body { padding: 1rem; }
+    .btn { background: linear-gradient(135deg, var(--brand1), var(--brand2)); color:#fff; border:none; padding:.5rem .9rem; border-radius:8px; font-weight:800; cursor:pointer; transition:.15s; }
+    .btn-ghost { background: transparent; color: var(--ink); border:1px solid var(--line); padding:.45rem .8rem; border-radius:8px; font-weight:700; cursor:pointer; }
+    .form { display:grid; gap:.7rem; }
+    .form label { font-size:.85rem; color:var(--ink-dim); font-weight:700; }
+    .form input { padding:.6rem .7rem; border:1px solid var(--line); border-radius:10px; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { text-align:left; padding:.55rem .6rem; border-bottom:1px solid var(--line); font-size:.9rem; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">RX</div>
+        <h1>Medilink</h1>
+      </div>
+      <div class="side-section">
+        <div class="side-title">Quick Actions</div>
+        <nav class="nav">
+          <a href="{% url 'pharmacy_home' %}">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+            <span class="label">Dashboard</span>
+          </a>
+          <a href="{% url 'add_medicine' %}">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+            <span class="label">Add Medicine</span>
+          </a>
+          <a href="{% url 'update_stock' %}">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            <span class="label">Update Stock</span>
+          </a>
+          <a href="{% url 'view_inventory' %}">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"></path></svg>
+            <span class="label">View Full Inventory</span>
+          </a>
+          <a href="{% url 'pharmacy_settings' %}" class="primary">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0A1.65 1.65 0 0 0 9 3.09V3a2 2 0 1 1 4 0v.09c0 .66.39 1.26 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0A1.65 1.65 0 0 0 21 12h.09a2 2 0 1 1 0 4H21a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span class="label">Settings</span>
+          </a>
+        </nav>
+      </div>
+
+      <div class="side-section user-profile" style="margin-top:auto; padding-top:0;">
+        <div class="side-title">Pharmacist</div>
+        <div style="display:flex; align-items:center; gap:.6rem; padding:.6rem; background:#f8fafc; border-radius:10px;">
+          <div class="avatar" style="width:32px; height:32px; font-size:.8rem;">{{ pharmacy_name|first|upper }}</div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-weight:800; font-size:.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ pharmacy_name }}</div>
+            <div style="font-size:.75rem; color:var(--ink-dim);">Pharmacy</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="main">
+      <header class="topbar">
+        <div class="top-left">
+          <div class="top-title">Pharmacy Settings</div>
+        </div>
+        <div class="top-right">
+          <div class="avatar">{{ pharmacy_name|first|upper }}</div>
+        </div>
+      </header>
+
+      <div class="content">
+        {% if messages %}
+          <div class="messages">
+            {% for message in messages %}
+              <div class="message message-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="grid">
+          <div class="panel">
+            <div class="head"><h2>Pharmacy Profile</h2></div>
+            <div class="body">
+              <form method="post" class="form">
+                {% csrf_token %}
+                <input type="hidden" name="which" value="name"/>
+                <label for="id_pharmacy_name">Pharmacy Name</label>
+                {{ name_form.pharmacy_name }}
+                <div>
+                  <button type="submit" class="btn">Save</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="head"><h2>Pharmacists</h2></div>
+            <div class="body">
+              <form method="post" class="form" style="margin-bottom:1rem;">
+                {% csrf_token %}
+                <input type="hidden" name="which" value="staff"/>
+                {{ staff_form.as_p }}
+                <div>
+                  <button type="submit" class="btn">Add Pharmacist</button>
+                </div>
+              </form>
+
+              <table>
+                <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th></th></tr></thead>
+                <tbody>
+                  {% for s in staff %}
+                    <tr>
+                      <td>{{ s.name }}</td>
+                      <td>{{ s.email }}</td>
+                      <td>{{ s.phone }}</td>
+                      <td style="text-align:right;">
+                        <a class="btn-ghost" href="{% url 'edit_pharmacist' s.id %}">Edit</a>
+                        <form method="post" action="{% url 'delete_pharmacist' s.id %}" style="display:inline; margin-left:.4rem;">
+                          {% csrf_token %}
+                          <button class="btn-ghost" type="submit" onclick="return confirm('Delete this pharmacist?');">Delete</button>
+                        </form>
+                      </td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="4" class="muted">No pharmacists yet.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+</body>
+</html>
+
