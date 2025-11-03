@@ -439,6 +439,13 @@
       background: rgba(16, 185, 129, 0.1);
       transform: translateX(2px);
     }
+
+    /* Flash messages */
+    .flash { position: fixed; top: 12px; right: 12px; z-index: 1000; display: grid; gap: .5rem; }
+    .flash .message { background:#fff; border:1px solid var(--line); border-left:4px solid var(--brand1); padding:.6rem .8rem; border-radius:8px; box-shadow:0 4px 18px rgba(2,6,23,.08); animation: slideFade .25s ease-out; font-weight:700; color:var(--ink); }
+    .flash .message-error { border-left-color:#ef4444; }
+    .flash .message-success { border-left-color:#10b981; }
+    @keyframes slideFade { from { opacity: 0; transform: translateY(-6px);} to { opacity: 1; transform: translateY(0);} }
   </style>
 </head>
 <body>
@@ -490,14 +497,23 @@
       </div>
       
       <div class="side-section user-profile" style="margin-top:auto; padding-top:0;">
-        <div class="side-title">Pharmacist</div>
-        <div style="display:flex; align-items:center; gap:.6rem; padding:.6rem; background:#f8fafc; border-radius:10px;">
-          <div class="avatar" style="width:32px; height:32px; font-size:.8rem;">AY</div>
-          <div style="flex:1; min-width:0;">
-            <div style="font-weight:800; font-size:.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Ahmad Yateem</div>
-            <div style="font-size:.75rem; color:var(--ink-dim);">Head Pharmacist</div>
+        <div class="side-title">Pharmacists</div>
+        {% if staff %}
+          <div style="display:flex; flex-direction:column; gap:.4rem;">
+            {% for s in staff|slice:":4" %}
+              <div style="display:flex; align-items:center; gap:.6rem; padding:.6rem; background:#f8fafc; border-radius:10px;">
+                <div class="avatar" style="width:32px; height:32px; font-size:.8rem;">{{ s.name|first|upper }}</div>
+                <div style="flex:1; min-width:0;">
+                  <div style="font-weight:800; font-size:.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ s.name }}</div>
+                  <div style="font-size:.75rem; color:var(--ink-dim);">{{ s.email }}</div>
+                </div>
+              </div>
+            {% endfor %}
+            <a href="{% url 'pharmacy_settings' %}" class="auth-link">Manage staff</a>
           </div>
-        </div>
+        {% else %}
+          <div class="muted">No pharmacists yet. <a href="{% url 'pharmacy_settings' %}" class="auth-link">Add one</a>.</div>
+        {% endif %}
       </div>
       
       <div class="collapse-btn">
@@ -540,6 +556,17 @@
           </form>
         </div>
       </header>
+
+      {% if messages %}
+        <div class="flash" id="flash">
+          {% for message in messages %}
+            <div class="message message-{{ message.tags }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+        <script>
+          setTimeout(function(){ var f=document.getElementById('flash'); if(f) f.style.display='none'; }, 3000);
+        </script>
+      {% endif %}
 
       <div class="content">
         <div class="panel">

@@ -983,9 +983,20 @@ def pharmacy_home(request):
     # Limit to top 10 most critical
     critical_medicines = critical_medicines[:10]
     
+    # Ensure owner is represented as staff (editable in Settings)
+    try:
+        PharmacistStaff.objects.get_or_create(
+            pharmacy=pharmacy,
+            email=request.user.email,
+            defaults={'name': request.user.name, 'phone': getattr(request.user, 'phone_number', '') or ''}
+        )
+    except Exception:
+        pass
+
+    staff = pharmacy.staff.order_by('name')
+
     context = {
         'pharmacy_name': pharmacy.pharmacy_id.name,
-        'pharmacist_name': 'Ahmad Yateem',
         'today': today.strftime('%A, %B %d, %Y'),
         'total_medicines': total_medicines,
         'total_stock_quantity': total_stock_quantity,
@@ -994,6 +1005,7 @@ def pharmacy_home(request):
         'expired_count': expired_count,
         'critical_medicines': critical_medicines,
         'has_inventory': total_medicines > 0,
+        'staff': staff,
     }
     
     return render(request, 'accounts/pharmacy_home.html', context)

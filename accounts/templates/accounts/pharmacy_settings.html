@@ -46,6 +46,13 @@
     .form input { padding:.6rem .7rem; border:1px solid var(--line); border-radius:10px; }
     table { width:100%; border-collapse: collapse; }
     th, td { text-align:left; padding:.55rem .6rem; border-bottom:1px solid var(--line); font-size:.9rem; }
+
+    /* Flash messages */
+    .messages { position: fixed; top: 12px; right: 12px; z-index: 1000; display: grid; gap: .5rem; }
+    .message { background:#fff; border:1px solid var(--line); border-left:4px solid var(--brand1); padding:.6rem .8rem; border-radius:8px; box-shadow:0 4px 18px rgba(2,6,23,.08); animation: slideFade .25s ease-out; font-weight:700; color:var(--ink); }
+    .message-error { border-left-color:#ef4444; }
+    .message-success { border-left-color:#10b981; }
+    @keyframes slideFade { from { opacity: 0; transform: translateY(-6px);} to { opacity: 1; transform: translateY(0);} }
   </style>
 </head>
 <body>
@@ -105,11 +112,14 @@
 
       <div class="content">
         {% if messages %}
-          <div class="messages">
+          <div class="messages" id="flash">
             {% for message in messages %}
               <div class="message message-{{ message.tags }}">{{ message }}</div>
             {% endfor %}
           </div>
+          <script>
+            setTimeout(function(){ var f=document.getElementById('flash'); if(f) f.style.display='none'; }, 3000);
+          </script>
         {% endif %}
 
         <div class="grid">
@@ -170,4 +180,3 @@
   
 </body>
 </html>
-
