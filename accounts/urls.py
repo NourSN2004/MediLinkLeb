@@ -68,6 +68,9 @@ urlpatterns = [
     path('pharmacy/update-stock/', views.update_stock, name='update_stock'),
     path('pharmacy/inventory/', views.view_inventory, name='view_inventory'),
     path('pharmacy/delete-stock/<int:stock_id>/', views.delete_stock, name='delete_stock'),
+
+    # Admin/utility actions
+    path('admin/populate-pharmacies/', views.populate_pharmacies, name='populate_pharmacies'),
     
 
   

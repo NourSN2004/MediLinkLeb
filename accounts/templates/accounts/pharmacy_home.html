@@ -516,6 +516,12 @@
             <div style="font-weight:800;">{{ pharmacy_name }}</div>
             <small style="color:var(--ink-dim);">{{ today }}</small>
           </div>
+          {% if request.user.is_superuser %}
+          <form action="{% url 'populate_pharmacies' %}" method="post" style="margin-left:.5rem;">
+            {% csrf_token %}
+            <button type="submit" class="btn-ghost" title="Populate demo data for all pharmacies">Populate Demo</button>
+          </form>
+          {% endif %}
           <form action="{% url 'logout' %}" method="post" style="margin-left:.5rem;">
             {% csrf_token %}
             <button type="submit" class="btn-ghost">Sign out</button>

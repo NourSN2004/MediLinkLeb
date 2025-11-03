@@ -16,6 +16,7 @@ from datetime import datetime, date
 import logging
 import calendar
 from operator import attrgetter
+from django.views.decorators.http import require_POST
 
 from itertools import groupby
 
@@ -1080,6 +1081,32 @@ def pharmacy_home_preview(request):
     }
     
     return render(request, 'accounts/pharmacy_home.html', context)
+
+
+# ============================================================================
+# ADMIN/UTILITY ACTIONS
+# ============================================================================
+
+@login_required
+@require_POST
+def populate_pharmacies(request):
+    """Populate demo medicines and stock for all pharmacy accounts.
+
+    Restricted to superusers to avoid accidental mass writes.
+    """
+    if not request.user.is_superuser:
+        return render(request, 'accounts/error.html', {
+            'message': 'This action is restricted to administrators.'
+        })
+
+    try:
+        from populate_pharmacy import populate as populate_all
+        populate_all()
+        messages.success(request, 'Pharmacy demo data populated successfully.')
+    except Exception as exc:
+        messages.error(request, f'Population failed: {exc}')
+    # Return user to pharmacy dashboard or home
+    return redirect('pharmacy_home')
 
 # ============================================================================
 # PHARMACY MEDICINE MANAGEMENT VIEWS
