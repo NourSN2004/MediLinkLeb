@@ -15,6 +15,10 @@ from django.urls import reverse
 from datetime import datetime, date
 import logging
 import calendar
+from operator import attrgetter
+
+from itertools import groupby
+
 
 logger = logging.getLogger(__name__)
 
@@ -827,19 +831,19 @@ def doctor_home_preview(request):
         'appointments': appointments,
     })
 
-
 @login_required
 def patient_home(request):
     """
     Patient Homepage view:
-    - Shows upcoming appointments (today only)
-    - Shows notifications counter
+    - Shows upcoming and past appointments
+    - Displays notifications counter
     - Provides sidebar navigation
     """
     user = request.user
     today = timezone.localdate()
+    now = timezone.now()
 
-    # Check if user is actually a patient by role
+    # Ensure user is actually a patient
     if user.role != User.Role.PATIENT:
         return render(request, "accounts/error.html", {
             "message": "This page is for patients only."
@@ -849,7 +853,6 @@ def patient_home(request):
     try:
         patient_profile = user.patient
     except Patient.DoesNotExist:
-        # Auto-create Patient profile if user has patient role but no profile
         patient_profile = Patient.objects.create(
             patient_id=user,
             national_id='',
@@ -859,29 +862,39 @@ def patient_home(request):
             history_summary=''
         )
 
-    # Get today's appointments with doctor information
-    today_appointments = Appointment.objects.filter(
+    # ✅ Upcoming appointments (including today)
+    upcoming_appointments = Appointment.objects.filter(
         patient=patient_profile,
-        date_time__date=today,
+        date_time__gte=now,
         status=Appointment.Status.SCHEDULED
     ).select_related('doctor__doctor_id').order_by('date_time')
 
-    # Mock notifications for now (replace with actual Notification model later)
+    # ✅ Past appointments (not cancelled)
+    past_appointments = Appointment.objects.filter(
+        patient=patient_profile,
+        date_time__lt=now
+    ).exclude(status=Appointment.Status.CANCELLED).select_related('doctor__doctor_id').order_by('-date_time')
+
+    # Mock notifications (replace later with real model)
     notifications = [
         {"message": "Your test results are ready.", "seen": False},
         {"message": "Dr. Leila confirmed your appointment for Oct 12.", "seen": True},
     ]
     unseen_count = sum(1 for n in notifications if not n["seen"])
 
+    # ✅ Only one tiny addition below ↓ (no logic changes)
     context = {
         "patient_name": user.name or user.username,
         "today": today.strftime("%A, %B %d"),
-        "appointments": today_appointments,
+        "appointments": upcoming_appointments,  # <-- added for template compatibility
+        "upcoming_appointments": upcoming_appointments,
+        "past_appointments": past_appointments,
         "unseen_count": unseen_count,
         "notifications": notifications,
     }
 
     return render(request, "accounts/patient_home.html", context)
+
 
 @login_required
 def pharmacy_home(request):
@@ -1184,6 +1197,31 @@ def add_medicine(request):
     
     return render(request, 'accounts/add_medicine.html', context)
 
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+
+@login_required
+def cancel_appointment(request, appt_id):
+    """
+    Allows a patient to cancel their own appointment.
+    """
+    user = request.user
+    if user.role != User.Role.PATIENT:
+        return render(request, "accounts/error.html", {
+            "message": "Unauthorized access."
+        })
+
+    appointment = get_object_or_404(Appointment, id=appt_id, patient=user.patient)
+
+    if request.method == "POST":
+        appointment.status = Appointment.Status.CANCELLED
+        appointment.save()
+        messages.success(request, "Your appointment was cancelled successfully.")
+        return redirect("patient_home")
+
+    return render(request, "accounts/error.html", {
+        "message": "Invalid request method."
+    })
 
 @login_required
 def update_stock(request):
@@ -1412,23 +1450,29 @@ def reset_password(request, token):
 # ============================================================================
 # PATIENT PAGES
 # ============================================================================
-
-from itertools import groupby
-from operator import attrgetter
+from datetime import datetime
+from django.utils.dateparse import parse_date
+from django.contrib import messages
+from django.utils import timezone
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from .models import Doctor, Appointment, Patient, User
 
 @login_required
 def schedule_appointment(request):
     """
-    Page for patients to schedule new appointments with doctors
+    Page for patients to schedule new appointments with doctors.
+    Supports optional pre-filled date/time when redirected from availability page.
     """
     user = request.user
 
-    # Check if user is a patient
+    # Ensure user is a patient
     if user.role != User.Role.PATIENT:
         return render(request, "accounts/error.html", {
             "message": "This page is for patients only."
         })
 
+    # Ensure patient profile exists
     try:
         patient_profile = user.patient
     except Patient.DoesNotExist:
@@ -1441,16 +1485,86 @@ def schedule_appointment(request):
             history_summary=''
         )
 
-    # Get all doctors
+    # ✅ Handle form submission
+    if request.method == "POST":
+        doctor_id = request.POST.get("doctor")
+        date_str = request.POST.get("date")
+        time_str = request.POST.get("time")
+        notes = request.POST.get("notes", "").strip()
+
+        # --- Validation ---
+        if not (doctor_id and date_str and time_str):
+            messages.error(request, "Please select a doctor, date, and time.")
+            return redirect("schedule_appointment")
+
+        try:
+            doctor = Doctor.objects.get(doctor_id__id=doctor_id)
+        except Doctor.DoesNotExist:
+            messages.error(request, "Selected doctor not found.")
+            return redirect("schedule_appointment")
+
+        try:
+            the_date = parse_date(date_str)
+            hour, minute = map(int, time_str.split(":"))
+            tz = timezone.get_current_timezone()
+            dt = timezone.make_aware(datetime(the_date.year, the_date.month, the_date.day, hour, minute), tz)
+        except Exception:
+            messages.error(request, "Invalid date or time format.")
+            return redirect("schedule_appointment")
+
+        # --- Check if slot is free ---
+        if Appointment.objects.filter(doctor=doctor, date_time=dt, status=Appointment.Status.SCHEDULED).exists():
+            messages.error(request, "This time slot is already booked.")
+            return redirect("schedule_appointment")
+
+        # --- Create the appointment ---
+        Appointment.objects.create(
+            doctor=doctor,
+            patient=patient_profile,
+            date_time=dt,
+            notes=notes,  # ✅ save notes
+            status=Appointment.Status.SCHEDULED,
+        )
+
+        messages.success(
+            request,
+            f"✅ Appointment booked successfully with {doctor.doctor_id.name} "
+            f"on {the_date.strftime('%B %d, %Y')} at {dt.strftime('%I:%M %p')}."
+        )
+      
+         # ✅ stay on same page and show message
+        return redirect("schedule_appointment")
+
+
+    # ✅ Original GET logic (kept intact)
+    preset_date = request.GET.get("date")
+    preset_time = request.GET.get("time")
+    preset_doctor_id = request.GET.get("doctor")
+
     doctors = Doctor.objects.all().select_related('doctor_id')
+
+    preset_doctor_name = None
+    if preset_doctor_id:
+        try:
+            selected_doctor = Doctor.objects.get(doctor_id__id=preset_doctor_id)
+            preset_doctor_name = selected_doctor.doctor_id.name
+        except Doctor.DoesNotExist:
+            preset_doctor_name = None
 
     context = {
         "patient_name": user.name or user.username,
         "today": timezone.localdate().strftime("%A, %B %d"),
         "doctors": doctors,
+        "preset_date": preset_date,
+        "preset_time": preset_time,
+        "preset_doctor_id": preset_doctor_id,
+        "preset_doctor_name": preset_doctor_name,
     }
 
     return render(request, "accounts/schedule_appointment.html", context)
+
+
+    
 
 
 @login_required
@@ -1657,3 +1771,151 @@ def browse_medicine(request):
     }
 
     return render(request, 'accounts/browse_medicine.html', context)
+
+@login_required
+def view_doctor_availability(request, doctor_id):
+    """Allow patients to view a doctor's weekly schedule and booked slots."""
+    # Ensure only patients can access
+    if request.user.role != User.Role.PATIENT:
+        return render(request, "accounts/error.html", {
+            "message": "This page is for patients only."
+        })
+
+    # Get doctor profile
+    try:
+        doctor = Doctor.objects.get(pk=doctor_id)
+    except Doctor.DoesNotExist:
+        messages.error(request, "Doctor not found.")
+        return redirect("schedule_appointment")
+
+    today = timezone.localdate()
+    date_str = request.GET.get("date")
+    selected_date = parse_date(date_str) if date_str else today
+
+    week_start = selected_date - timedelta(days=selected_date.weekday())
+    week_end = week_start + timedelta(days=6)
+    tz = timezone.get_current_timezone()
+
+    # Get weekly working hours
+    working_hours = DoctorWorkingHours.objects.filter(doctor=doctor).order_by("day_of_week")
+
+    # Get all appointments + timeoffs in this week
+    appointments = Appointment.objects.filter(
+        doctor=doctor,
+        date_time__date__gte=week_start,
+        date_time__date__lte=week_end,
+        status=Appointment.Status.SCHEDULED
+    )
+    timeoffs = DoctorTimeOff.objects.filter(
+        doctor=doctor,
+        date__gte=week_start,
+        date__lte=week_end
+    )
+
+    # Build availability grid
+    week_data = []
+    for day_offset in range(7):
+        current_date = week_start + timedelta(days=day_offset)
+        dow = current_date.weekday() + 1
+        hours = working_hours.filter(day_of_week=dow).first()
+
+        if not hours:
+            week_data.append({
+                "date": current_date,
+                "weekday": current_date.strftime("%A"),
+                "slots": [],
+                "available": False,
+                "note": "No working hours"
+            })
+            continue
+
+        # Compute all slots for that day (15-minute steps)
+        start_dt = timezone.make_aware(datetime.combine(current_date, hours.start_time), tz)
+        end_dt = timezone.make_aware(datetime.combine(current_date, hours.end_time), tz)
+        slot_time = start_dt
+        slots = []
+
+        while slot_time < end_dt:
+            slot_str = slot_time.strftime("%H:%M")
+
+            # mark as busy if appointment overlaps within 15min
+            slot_busy = appointments.filter(
+                date_time__gte=slot_time,
+                date_time__lt=slot_time + timedelta(minutes=15)
+            ).exists()
+
+            # Check time off overlap
+            off_blocked = any(
+                off.date == current_date and
+                off.start_time <= slot_time.time() < off.end_time
+                for off in timeoffs
+            )
+
+            if slot_busy:
+                status = "booked"
+            elif off_blocked:
+                status = "timeoff"
+            else:
+                status = "free"
+
+            slots.append({"time": slot_str, "status": status})
+            slot_time += timedelta(minutes=15)
+
+        week_data.append({
+            "date": current_date,
+            "weekday": current_date.strftime("%A"),
+            "slots": slots,
+            "available": True
+        })
+
+    context = {
+        "doctor": doctor,
+        "week_start": week_start,
+        "week_end": week_end,
+        "week_data": week_data,
+        "today": today,
+    }
+    return render(request, "accounts/view_doctor_availability.html", context)
+
+
+@login_required
+def view_medical_history(request):
+    """Display and allow editing of a patient's medical info, past appointments, and test results."""
+    if request.user.role != User.Role.PATIENT:
+        return render(request, "accounts/error.html", {"message": "This page is for patients only."})
+
+    patient = request.user.patient  # assuming 1-to-1 relation
+    past_appointments = Appointment.objects.filter(
+        patient=patient,
+        status=Appointment.Status.COMPLETED
+    ).order_by("-date_time")
+
+    test_results = TestResult.objects.filter(patient=patient) if hasattr(patient, "testresult_set") else []
+
+    # ✅ Handle edits
+    if request.method == "POST":
+        national_id = request.POST.get("national_id", "").strip()
+        dob = request.POST.get("dob") or None
+        gender = request.POST.get("gender", "").strip()
+        blood_type = request.POST.get("blood_type", "").strip()
+        summary = request.POST.get("history_summary", "").strip()
+
+        patient.national_id = national_id
+        patient.dob = dob
+        patient.gender = gender
+        patient.blood_type = blood_type
+        patient.history_summary = summary
+        patient.save()
+
+        messages.success(request, "✅ Medical information updated successfully.")
+        return redirect("view_medical_history")
+
+    context = {
+        "patient_name": request.user.name or request.user.username,
+        "today": timezone.localdate().strftime("%A, %B %d"),
+        "patient_info": patient,
+        "past_appointments": past_appointments,
+        "test_results": test_results,
+        "blood_types": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],  # ✅ add this
+    }
+    return render(request, "accounts/view_medical_history.html", context)

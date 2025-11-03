@@ -76,6 +76,42 @@
       .hamburger{ display:grid; } 
       .info-grid{ grid-template-columns:1fr; }
     }
+
+    /* Editable field + button styles */
+      .input-field {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: .5rem .6rem;
+        font-size: .95rem;
+        color: var(--ink);
+        background: #fff;
+        box-sizing: border-box;
+      }
+      .input-field:focus {
+        outline: none;
+        border-color: var(--brand2);
+        box-shadow: 0 0 0 2px rgba(99,102,241,.2);
+      }
+
+      .save-btn {
+        background: linear-gradient(135deg, var(--brand1), var(--brand2));
+        color: #fff;
+        font-weight: 700;
+        border: none;
+        padding: .7rem 1.3rem;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: .2s;
+      }
+      .save-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(99,102,241,.3);
+      }
+
+
+
+
   </style>
 </head>
 <body>
@@ -144,31 +180,52 @@
           <p>View your health information, past appointments, and test results</p>
         </div>
 
-        <!-- Patient Information -->
-        <div class="info-grid">
+    
+        <!-- Editable Patient Information -->
+        <form method="post" class="info-grid" style="margin-bottom:1.5rem;">
+          {% csrf_token %}
           <div class="info-card">
             <div class="label">National ID</div>
-            <div class="value">{{ patient_info.national_id }}</div>
+            <input type="text" name="national_id" value="{{ patient_info.national_id }}" class="input-field">
           </div>
+
           <div class="info-card">
             <div class="label">Date of Birth</div>
-            <div class="value">{{ patient_info.dob }}</div>
+            <input type="date" name="dob" value="{{ patient_info.dob|date:'Y-m-d' }}" class="input-field">
           </div>
+
           <div class="info-card">
             <div class="label">Gender</div>
-            <div class="value">{{ patient_info.gender }}</div>
+            <select name="gender" class="input-field">
+              <option value="">Select</option>
+              <option value="Male" {% if patient_info.gender == 'Male' %}selected{% endif %}>Male</option>
+              <option value="Female" {% if patient_info.gender == 'Female' %}selected{% endif %}>Female</option>
+              <option value="Other" {% if patient_info.gender == 'Other' %}selected{% endif %}>Other</option>
+            </select>
           </div>
+
           <div class="info-card">
             <div class="label">Blood Type</div>
-            <div class="value">{{ patient_info.blood_type }}</div>
+            <select name="blood_type" class="input-field">
+              <option value="">Select</option>
+              {% for type in blood_types %}
+                <option value="{{ type }}" {% if patient_info.blood_type == type %}selected{% endif %}>{{ type }}</option>
+              {% endfor %}
+            </select>
           </div>
-        </div>
 
-        <!-- Medical Summary -->
-        <div class="summary-box">
-          <h3>📝 Medical Summary</h3>
-          <p>{{ patient_info.history_summary }}</p>
-        </div>
+          <div class="summary-box" style="grid-column:1 / -1;">
+            <h3>Medical Summary</h3>
+            <textarea name="history_summary" rows="4" class="input-field" placeholder="Enter your medical background...">{{ patient_info.history_summary }}</textarea>
+          </div>
+
+          <div style="grid-column:1 / -1; text-align:right;">
+            <button type="submit" class="save-btn">💾 Save Changes</button>
+          </div>
+        </form>
+
+
+      
 
         <!-- Past Appointments -->
         <div class="section">

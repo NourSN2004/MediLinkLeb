@@ -148,8 +148,7 @@
       <div class="content">
         <div class="panel">
           <div class="head">
-            <h2>Today's Appointments</h2>
-            <a href="{% url 'patient_home' %}" class="auth-link">View all</a>
+            <h2>Upcoming Appointments</h2>
           </div>
           <div class="body">
             {% if appointments %}
@@ -161,19 +160,23 @@
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
                       </svg>
                       <div class="info">
-                        <div class="doctor-name">{{ appt.doctor }}</div>
+                        <div class="doctor-name">{{ appt.doctor.doctor_id.name }}</div>
                         <div class="time">
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path>
                           </svg>
-                          {{ appt.date_time|date:"h:i A" }}
+                          {{ appt.date_time|date:"M d, Y · h:i A" }}
                         </div>
+
                       </div>
                     </div>
                     <div class="actions">
-                      <button type="button">Reschedule</button>
-                      <button type="button" class="cancel">Cancel</button>
-                    </div>
+                    <form action="{% url 'cancel_appointment' appt.id %}" method="post" style="display:inline;">
+                      {% csrf_token %}
+                      <button type="submit" class="cancel">Cancel</button>
+                    </form>
+                  </div>
+
                   </div>
                 {% endfor %}
               </div>
