@@ -69,8 +69,8 @@ urlpatterns = [
     path('pharmacy/inventory/', views.view_inventory, name='view_inventory'),
     path('pharmacy/delete-stock/<int:stock_id>/', views.delete_stock, name='delete_stock'),
 
-    # Admin/utility actions
-    path('admin/populate-pharmacies/', views.populate_pharmacies, name='populate_pharmacies'),
+    # Utility actions (avoid /admin path to not conflict with Django admin)
+    path('ops/populate-pharmacies/', views.populate_pharmacies, name='populate_pharmacies'),
     
 
   

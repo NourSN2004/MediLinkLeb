@@ -519,7 +519,12 @@
           {% if request.user.is_superuser %}
           <form action="{% url 'populate_pharmacies' %}" method="post" style="margin-left:.5rem;">
             {% csrf_token %}
-            <button type="submit" class="btn-ghost" title="Populate demo data for all pharmacies">Populate Demo</button>
+            <button type="submit" title="Populate demo data for all pharmacies"
+                    style="background:linear-gradient(135deg,var(--brand1),var(--brand2));
+                           color:#fff; border:none; padding:.5rem .9rem; border-radius:8px;
+                           font-weight:800; cursor:pointer; transition:.15s;">
+              Populate Demo
+            </button>
           </form>
           {% endif %}
           <form action="{% url 'logout' %}" method="post" style="margin-left:.5rem;">
