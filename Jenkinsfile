@@ -65,10 +65,9 @@ pipeline {
                         services.each { service ->
                             echo "Building ${service}..."
                             
-                            // Configure Docker to use Minikube's daemon
+                            // Build Docker image (Jenkins has Docker socket mounted)
                             sh """
                                 cd microservices/${service}
-                                eval \$(minikube docker-env)
                                 docker build -t ${service}:${GIT_COMMIT_SHORT} .
                                 docker tag ${service}:${GIT_COMMIT_SHORT} ${service}:latest
                             """
