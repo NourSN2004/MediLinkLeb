@@ -45,18 +45,42 @@ pipeline {
                         sharedFiles.any { shared -> file.contains(shared) }
                     }
                     
-                    if (sharedChanged || services.isEmpty()) {
-                        echo "Shared files changed or no specific service detected. Building all services."
+                    // Check if only documentation or non-code files changed
+                    def docFiles = ['.md', '.txt', 'LICENSE', '.gitignore', 'scripts/', '.ps1']
+                    def onlyDocsChanged = changedFiles.every { file ->
+                        docFiles.any { doc -> file.endsWith(doc) || file.contains(doc) }
+                    }
+                    
+                    if (sharedChanged) {
+                        echo "Shared files changed. Building all services."
                         services = serviceMap.keySet().toList()
+                    } else if (services.isEmpty()) {
+                        if (onlyDocsChanged) {
+                            echo "Only documentation or non-code files changed. Skipping build."
+                            services = []
+                        } else {
+                            echo "No specific service detected but code files changed. Building all services as precaution."
+                            services = serviceMap.keySet().toList()
+                        }
                     }
                     
                     env.CHANGED_SERVICES = services.join(',')
-                    echo "Services to build: ${env.CHANGED_SERVICES}"
+                    
+                    if (services.isEmpty()) {
+                        echo "No services to build - documentation-only changes."
+                        env.SKIP_BUILD = 'true'
+                    } else {
+                        echo "Services to build: ${env.CHANGED_SERVICES}"
+                        env.SKIP_BUILD = 'false'
+                    }
                 }
             }
         }
         
         stage('Build Changed Services') {
+            when {
+                expression { env.SKIP_BUILD != 'true' }
+            }
             steps {
                 script {
                     if (env.CHANGED_SERVICES) {
@@ -82,6 +106,9 @@ pipeline {
         }
         
         stage('Run Tests') {
+            when {
+                expression { env.SKIP_BUILD != 'true' }
+            }
             steps {
                 script {
                     if (env.CHANGED_SERVICES) {
@@ -104,6 +131,9 @@ pipeline {
         }
         
         stage('Deploy to Kubernetes') {
+            when {
+                expression { env.SKIP_BUILD != 'true' }
+            }
             steps {
                 script {
                     if (env.CHANGED_SERVICES) {
@@ -144,6 +174,9 @@ pipeline {
         }
         
         stage('Verify Deployment') {
+            when {
+                expression { env.SKIP_BUILD != 'true' }
+            }
             steps {
                 script {
                     echo "Verifying deployment..."
