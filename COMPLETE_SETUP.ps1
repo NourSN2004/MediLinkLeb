@@ -191,6 +191,9 @@ if (-not $namespaceExists) {
 # Step 5: Deploy Database
 Write-Banner "Step 5: Deploying PostgreSQL Database"
 
+Write-Step "Creating secrets..."
+kubectl apply -f k8s/secrets/ -n medilink
+
 Write-Step "Deploying PostgreSQL..."
 kubectl apply -f k8s/database/ -n medilink
 Start-Sleep -Seconds 10
@@ -322,7 +325,7 @@ if ($IncludeJenkins) {
     Write-Banner "Step 10: Deploying Jenkins CI/CD"
     
     Write-Step "Deploying Jenkins..."
-    & "$PSScriptRoot\deploy-jenkins.ps1" -SkipNamespace
+    & "$PSScriptRoot\deploy-jenkins.ps1"
     
     Write-Host ""
     Write-Host "Jenkins deployed! Access at: http://jenkins.medilink.local" -ForegroundColor Green

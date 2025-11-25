@@ -16,6 +16,16 @@ spec:
       serviceAccountName: jenkins
       securityContext:
         fsGroup: 1000
+        runAsUser: 1000
+      initContainers:
+      - name: volume-permissions
+        image: busybox
+        command: ['sh', '-c', 'chown -R 1000:1000 /var/jenkins_home']
+        volumeMounts:
+        - name: jenkins-home
+          mountPath: /var/jenkins_home
+        securityContext:
+          runAsUser: 0
       containers:
       - name: jenkins
         image: jenkins/jenkins:lts
@@ -26,9 +36,7 @@ spec:
           name: agent
         env:
         - name: JAVA_OPTS
-          value: "-Djenkins.install.runSetupWizard=false"
-        - name: JENKINS_OPTS
-          value: "--prefix=/jenkins"
+          value: "-Xmx512m"
         volumeMounts:
         - name: jenkins-home
           mountPath: /var/jenkins_home
@@ -36,14 +44,14 @@ spec:
           mountPath: /var/run/docker.sock
         resources:
           requests:
-            memory: "1Gi"
-            cpu: "500m"
+            memory: "640Mi"
+            cpu: "250m"
           limits:
-            memory: "2Gi"
-            cpu: "1000m"
+            memory: "640Mi"
+            cpu: "500m"
         livenessProbe:
           httpGet:
-            path: /jenkins/login
+            path: /login
             port: 8080
           initialDelaySeconds: 90
           periodSeconds: 10
@@ -51,7 +59,7 @@ spec:
           failureThreshold: 5
         readinessProbe:
           httpGet:
-            path: /jenkins/login
+            path: /login
             port: 8080
           initialDelaySeconds: 60
           periodSeconds: 10

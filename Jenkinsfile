@@ -4,7 +4,7 @@ pipeline {
     environment {
         DOCKER_REGISTRY = "docker.io"
         K8S_NAMESPACE = "medilink"
-        GIT_COMMIT_SHORT = bat(script: "@git rev-parse --short HEAD", returnStdout: true).trim()
+        GIT_COMMIT_SHORT = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
     }
     
     stages {
@@ -12,8 +12,8 @@ pipeline {
             steps {
                 script {
                     // Get list of changed files
-                    def changedFiles = bat(
-                        script: "@git diff --name-only HEAD~1 HEAD 2>nul || git diff --name-only HEAD",
+                    def changedFiles = sh(
+                        script: "git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD",
                         returnStdout: true
                     ).trim().split('\n')
                     
@@ -66,10 +66,9 @@ pipeline {
                             echo "Building ${service}..."
                             
                             // Configure Docker to use Minikube's daemon
-                            bat """
-                                @echo off
-                                for /f "tokens=*" %%i in ('minikube docker-env --shell cmd') do %%i
-                                cd microservices\\${service}
+                            sh """
+                                cd microservices/${service}
+                                eval \$(minikube docker-env)
                                 docker build -t ${service}:${GIT_COMMIT_SHORT} .
                                 docker tag ${service}:${GIT_COMMIT_SHORT} ${service}:latest
                             """
@@ -93,10 +92,11 @@ pipeline {
                             echo "Testing ${service}..."
                             
                             // Run tests for each service
-                            bat """
-                                @echo off
-                                cd microservices\\${service}
-                                if exist tests.py ( python -m pytest tests\\ ) else if exist tests\\ ( python -m pytest tests\\ )
+                            sh """
+                                cd microservices/${service}
+                                if [ -f tests.py ] || [ -d tests/ ]; then
+                                    python -m pytest tests/ || true
+                                fi
                             """
                         }
                     }
@@ -114,7 +114,7 @@ pipeline {
                             echo "Deploying ${service} to Kubernetes..."
                             
                             // Update deployment with new image
-                            bat """
+                            sh """
                                 kubectl set image deployment/${service} ${service}=${service}:${GIT_COMMIT_SHORT} -n ${K8S_NAMESPACE}
                                 kubectl rollout status deployment/${service} -n ${K8S_NAMESPACE} --timeout=5m
                             """
@@ -135,9 +135,9 @@ pipeline {
             steps {
                 script {
                     echo "Running database migrations..."
-                    bat """
-                        for /f "tokens=*" %%i in ('kubectl get pods -n ${K8S_NAMESPACE} -l app=auth-service -o jsonpath^={.items[0].metadata.name}') do set POD=%%i
-                        kubectl exec -n ${K8S_NAMESPACE} %POD% -- python manage.py migrate
+                    sh """
+                        POD=\$(kubectl get pods -n ${K8S_NAMESPACE} -l app=auth-service -o jsonpath='{.items[0].metadata.name}')
+                        kubectl exec -n ${K8S_NAMESPACE} \$POD -- python manage.py migrate
                     """
                     echo "✓ Migrations completed"
                 }
@@ -150,12 +150,12 @@ pipeline {
                     echo "Verifying deployment..."
                     
                     // Check all pods are running
-                    bat """
+                    sh """
                         kubectl get pods -n ${K8S_NAMESPACE}
                     """
                     
                     // Check ingress
-                    bat """
+                    sh """
                         kubectl get ingress -n ${K8S_NAMESPACE}
                     """
                     

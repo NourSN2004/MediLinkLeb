@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: medilink-jenkins
+    user: root
+    privileged: true
+    network_mode: host
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - JAVA_OPTS=-Xmx1024m -Xms512m
+      - JENKINS_OPTS=--httpPort=9090
+    restart: unless-stopped
+
+volumes:
+  jenkins_home:
+    driver: local
