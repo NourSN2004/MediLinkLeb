@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Doctor Availability</title>
+  <style>
+    :root {
+      --bg: #f4f8fb;
+      --card: #ffffff;
+      --ink: #0f172a;
+      --ink-dim: #6b7280;
+      --accent: #0ea5e9;
+      --accent2: #6366f1;
+      --slot-free: #dcfce7;
+      --radius-lg: 16px;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: var(--ink);
+    }
+    .availability-page {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 5.5rem 1.75rem 2.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      min-height: 100vh;
+    }
+
+    /* sticky back btn */
+    .back-btn {
+      position: fixed;
+      top: 1.25rem;
+      right: 1.25rem;
+      background: linear-gradient(135deg, #0ea5e9, #0f766e);
+      color: #fff;
+      border: none;
+      padding: .65rem 1.35rem;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(15,118,110,.25);
+      text-decoration: none;
+      z-index: 50;
+    }
+
+    .header {
+      display: flex;
+      flex-direction: column;
+      gap: .35rem;
+      max-width: 420px;
+    }
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .icon-pill {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: rgba(99,102,241,.12);
+      color: #4338ca;
+      font-size: 1.1rem;
+    }
+    h1 {
+      font-size: 2.1rem;
+      line-height: 1.05;
+      letter-spacing: -.01em;
+      margin: 0;
+    }
+    .sub {
+      font-size: .9rem;
+      color: var(--ink-dim);
+    }
+    .week-range b {
+      color: var(--ink);
+    }
+
+    /* grid */
+    .availability-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+    }
+    .day-card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 1.15rem 1.15rem 1rem;
+      min-height: 170px;
+      border: 1px solid rgba(148,163,184,.25);
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+    }
+    .day-title {
+      font-weight: 700;
+      margin-bottom: .25rem;
+    }
+    .day-sub {
+      color: var(--ink-dim);
+      font-size: .75rem;
+    }
+    .slots-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+    }
+
+    /* slot colors */
+    .slot {
+      border-radius: 10px;
+      padding: .4rem .7rem;
+      font-size: .75rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .slot.free { background: #dcfce7; color:#166534; }
+    .slot.booked { background: #fee2e2; color:#991b1b; cursor: not-allowed; }
+    .slot.timeoff { background: #e2e8f0; color:#475569; cursor: not-allowed; }
+
+    .empty-text {
+      color: var(--ink-dim);
+      font-size: .85rem;
+    }
+
+    @media (max-width: 720px) {
+      .availability-page { padding-top: 5.75rem; }
+      h1 { font-size: 1.65rem; }
+      .back-btn { right: .75rem; top: .75rem; }
+    }
+  </style>
+</head>
+<body>
+  <a href="{% url 'schedule_appointment' %}" class="back-btn">← Back to Scheduling</a>
+
+  <div class="availability-page">
+    <header class="header">
+      <div class="title-row">
+        <div class="icon-pill">🩺</div>
+        <h1>Availability of {{ doctor.doctor_id.name }}</h1>
+      </div>
+      <p class="sub week-range">
+        <b>Week:</b> {{ week_start|date:"M d" }} – {{ week_end|date:"M d, Y" }}
+      </p>
+    </header>
+
+    <section class="availability-grid">
+      {% for day in week_data %}
+        <article class="day-card">
+          <div class="day-title">{{ day.weekday }} ({{ day.date|date:"M d" }})</div>
+
+          {% if not day.available %}
+            <p class="empty-text">No working hours</p>
+          {% else %}
+            <div class="slots-wrap">
+              {% for slot in day.slots %}
+                {% if slot.status == "free" %}
+                  <a href="{% url 'schedule_appointment' %}?doctor={{ doctor.doctor_id.id }}&date={{ day.date|date:'Y-m-d' }}&time={{ slot.time }}"
+                     class="slot free" title="Click to book this slot">{{ slot.time }}</a>
+                {% else %}
+                  <span class="slot {{ slot.status }}">{{ slot.time }}</span>
+                {% endif %}
+              {% empty %}
+                <p class="empty-text">No slots.</p>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </section>
+  </div>
+</body>
+</html>

@@ -1,0 +1,75 @@
+{% extends 'accounts/base.html' %}
+{% load static %}
+
+{% block title %}Create Account — Step 2{% endblock %}
+{% block extra_head %}
+<meta name="color-scheme" content="light dark">
+<style>
+  .form-control, input[type="email"], input[type="password"] {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    background: #ffffff;
+    color: #1e293b;
+    box-sizing: border-box;
+  }
+  .form-control:focus, input:focus {
+    outline: none;
+    border-color: #0ea5a4;
+    box-shadow: 0 0 0 4px rgba(14, 165, 164, 0.1);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="step-indicator">
+      <span class="step-number completed">1</span>
+      <span class="step-divider on"></span>
+      <span class="step-number active" aria-current="step">2</span>
+    </div>
+
+    <h1 class="auth-title">Create your account</h1>
+    <p class="auth-subtitle">Enter your details to access the clinic platform.</p>
+
+    <form class="auth-form" method="post" novalidate>
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label class="form-label" for="id_email">Email</label>
+        {{ form.email }}
+        {% if form.email.errors %}
+          <div class="form-error">{{ form.email.errors.0 }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="id_password1">Password</label>
+        {{ form.password1 }}
+        {% if form.password1.errors %}
+          <div class="form-error">{{ form.password1.errors.0 }}</div>
+        {% endif %}
+        <p class="form-hint">Use at least 8 characters with a mix of letters & numbers.</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="id_password2">Confirm password</label>
+        {{ form.password2 }}
+        {% if form.password2.errors %}
+          <div class="form-error">{{ form.password2.errors.0 }}</div>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full">Create account</button>
+    </form>
+
+    <div class="auth-footer">
+      Already have an account?
+      <a href="{% url 'login' %}" class="auth-link">Sign in</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

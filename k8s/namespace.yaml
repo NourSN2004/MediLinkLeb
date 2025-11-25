@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: medilink
+  labels:
+    name: medilink
+    environment: development

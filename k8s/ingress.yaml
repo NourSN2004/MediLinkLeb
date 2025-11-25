@@ -1,0 +1,88 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: medilink-ingress
+  namespace: medilink
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: medilink.local
+    http:
+      paths:
+      # API Gateway - Main entry point
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 8000
+      
+      # Auth Service API
+      - path: /api/auth
+        pathType: Prefix
+        backend:
+          service:
+            name: auth-service
+            port:
+              number: 8001
+      
+      # Doctor Service API
+      - path: /api/doctors
+        pathType: Prefix
+        backend:
+          service:
+            name: doctor-service
+            port:
+              number: 8002
+      
+      # Patient Service API
+      - path: /api/patients
+        pathType: Prefix
+        backend:
+          service:
+            name: patient-service
+            port:
+              number: 8003
+      
+      # Pharmacy Service API
+      - path: /api/pharmacy
+        pathType: Prefix
+        backend:
+          service:
+            name: pharmacy-service
+            port:
+              number: 8004
+      
+      # Scheduling Service API
+      - path: /api/scheduling
+        pathType: Prefix
+        backend:
+          service:
+            name: scheduling-service
+            port:
+              number: 8005
+      
+      # Inventory Service API
+      - path: /api/inventory
+        pathType: Prefix
+        backend:
+          service:
+            name: inventory-service
+            port:
+              number: 8006
+      
+      # Notification Service API
+      - path: /api/notifications
+        pathType: Prefix
+        backend:
+          service:
+            name: notification-service
+            port:
+              number: 8007

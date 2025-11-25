@@ -1,0 +1,65 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edit Appointment</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <style>
+    .form { display:grid; gap:.9rem; }
+    .group { display:grid; grid-template-columns: 1fr 1fr; gap:.6rem; }
+    .input, select, textarea { width:100%; padding:.6rem .7rem; border:1px solid var(--line); background:var(--input-bg); border-radius:10px; }
+    .actions { display:flex; gap:.5rem; margin-top:1rem; }
+    .btn { padding:.45rem .7rem; border-radius:10px; border:1px solid var(--line); background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; font-weight:800; cursor:pointer; }
+    .btn-secondary { padding:.45rem .7rem; border-radius:10px; border:1px solid var(--line); background:var(--btn-secondary-bg); color:var(--ink); font-weight:800; text-decoration:none; display:inline-grid; place-items:center; }
+    .meta { color:var(--ink-dim); }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card" style="max-width:720px; margin:0 auto;">
+      <h1 class="auth-title">Edit Appointment</h1>
+      <p class="auth-subtitle">{{ appointment.patient.patient_id.name }} • {{ appointment.patient.patient_id.email }}</p>
+
+      <form method="post" class="form">
+        {% csrf_token %}
+        <div class="group">
+          <div>
+            <label class="form-label">Date</label>
+            <input class="input" type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}" required>
+          </div>
+          <div>
+            <label class="form-label">Time</label>
+            {% if available_slots %}
+              <select name="time" required>
+                {% for t in available_slots %}
+                  <option value="{{ t }}" {% if appointment.date_time|date:'H:i' == t %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+              </select>
+            {% else %}
+              <input class="input" type="time" name="time" value="{{ appointment.date_time|date:'H:i' }}" required>
+            {% endif %}
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label">Patient Phone</label>
+          <input class="input" type="text" name="patient_phone" value="{{ appointment.patient.patient_id.phone_number }}" placeholder="Add or update phone number">
+        </div>
+
+        <div>
+          <label class="form-label">Notes</label>
+          <textarea name="notes" rows="3" class="input">{{ appointment.doctor_notes }}</textarea>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn">Save Changes</button>
+          <a href="{% url 'doctor_appointments' %}" class="btn-secondary">Back</a>
+          <a href="{% url 'doctor_home' %}" class="btn-secondary">Dashboard</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

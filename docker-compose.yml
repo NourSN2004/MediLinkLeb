@@ -1,0 +1,258 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: medilink_postgres
+    environment:
+      POSTGRES_DB: medilink_db
+      POSTGRES_USER: medilink
+      POSTGRES_PASSWORD: medilink_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medilink"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - medilink_network
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./microservices/auth-service
+      dockerfile: Dockerfile
+    container_name: medilink_auth
+    environment:
+      - SECRET_KEY=django-insecure-dev-key-change-in-production
+      - JWT_SECRET_KEY=jwt-secret-key-change-in-production
+      - DEBUG=True
+      - ALLOWED_HOSTS=*
+      - DB_NAME=medilink_db
+      - DB_USER=medilink
+      - DB_PASSWORD=medilink_password
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - SERVICE_SECRET_KEY=service-secret-change-in-production
+      - CORS_ALLOW_ALL=True
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - medilink_network
+
+  # Doctor Service
+  doctor-service:
+    build:
+      context: ./microservices/doctor-service
+      dockerfile: Dockerfile
+    container_name: medilink_doctor
+    environment:
+      - SECRET_KEY=django-insecure-dev-key-change-in-production
+      - DEBUG=True
+      - ALLOWED_HOSTS=*
+      - DB_NAME=medilink_db
+      - DB_USER=medilink
+      - DB_PASSWORD=medilink_password
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - SERVICE_SECRET_KEY=service-secret-change-in-production
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    networks:
+      - medilink_network
+
+  # Patient Service
+  patient-service:
+    build:
+      context: ./microservices/patient-service
+      dockerfile: Dockerfile
+    container_name: medilink_patient
+    environment:
+      - SECRET_KEY=django-insecure-dev-key-change-in-production
+      - DEBUG=True
+      - ALLOWED_HOSTS=*
+      - DB_NAME=medilink_db
+      - DB_USER=medilink
+      - DB_PASSWORD=medilink_password
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - SERVICE_SECRET_KEY=service-secret-change-in-production
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    networks:
+      - medilink_network
+
+  # Pharmacy Service
+  pharmacy-service:
+    build:
+      context: ./microservices/pharmacy-service
+      dockerfile: Dockerfile
+    container_name: medilink_pharmacy
+    environment:
+      - SECRET_KEY=django-insecure-dev-key-change-in-production
+      - DEBUG=True
+      - ALLOWED_HOSTS=*
+      - DB_NAME=medilink_db
+      - DB_USER=medilink
+      - DB_PASSWORD=medilink_password
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - SERVICE_SECRET_KEY=service-secret-change-in-production
+    ports:
+      - "8004:8004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    networks:
+      - medilink_network
+
+  # Scheduling Service
+  scheduling-service:
+    build:
+      context: ./microservices/scheduling-service
+      dockerfile: Dockerfile
+    container_name: medilink_scheduling
+    environment:
+      - SECRET_KEY=django-insecure-dev-key-change-in-production
+      - DEBUG=True
+      - ALLOWED_HOSTS=*
+      - DB_NAME=medilink_db
+      - DB_USER=medilink
+      - DB_PASSWORD=medilink_password
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - DOCTOR_SERVICE_URL=http://doctor-service:8002
+      - PATIENT_SERVICE_URL=http://patient-service:8003
+      - SERVICE_SECRET_KEY=service-secret-change-in-production
+    ports:
+      - "8005:8005"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      doctor-service:
+        condition: service_started
+      patient-service:
+        condition: service_started
+    networks:
+      - medilink_network
+
+  # Inventory Service
+  inventory-service:
+    build:
+      context: ./microservices/inventory-service
+      dockerfile: Dockerfile
+    container_name: medilink_inventory
+    environment:
+      - SECRET_KEY=django-insecure-dev-key-change-in-production
+      - DEBUG=True
+      - ALLOWED_HOSTS=*
+      - DB_NAME=medilink_db
+      - DB_USER=medilink
+      - DB_PASSWORD=medilink_password
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - PHARMACY_SERVICE_URL=http://pharmacy-service:8004
+      - SERVICE_SECRET_KEY=service-secret-change-in-production
+    ports:
+      - "8006:8006"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      pharmacy-service:
+        condition: service_started
+    networks:
+      - medilink_network
+
+  # Notification Service
+  notification-service:
+    build:
+      context: ./microservices/notification-service
+      dockerfile: Dockerfile
+    container_name: medilink_notification
+    environment:
+      - SECRET_KEY=django-insecure-dev-key-change-in-production
+      - DEBUG=True
+      - ALLOWED_HOSTS=*
+      - DB_NAME=medilink_db
+      - DB_USER=medilink
+      - DB_PASSWORD=medilink_password
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - SERVICE_SECRET_KEY=service-secret-change-in-production
+      - EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+    ports:
+      - "8007:8007"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    networks:
+      - medilink_network
+
+  # API Gateway & Web Interface
+  api-gateway:
+    build:
+      context: ./microservices/api-gateway
+      dockerfile: Dockerfile
+    container_name: medilink_gateway
+    environment:
+      - SECRET_KEY=django-insecure-dev-key-change-in-production
+      - DEBUG=True
+      - ALLOWED_HOSTS=*
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - DOCTOR_SERVICE_URL=http://doctor-service:8002
+      - PATIENT_SERVICE_URL=http://patient-service:8003
+      - PHARMACY_SERVICE_URL=http://pharmacy-service:8004
+      - SCHEDULING_SERVICE_URL=http://scheduling-service:8005
+      - INVENTORY_SERVICE_URL=http://inventory-service:8006
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8007
+      - SERVICE_SECRET_KEY=service-secret-change-in-production
+    ports:
+      - "8080:8000"
+    depends_on:
+      - auth-service
+      - doctor-service
+      - patient-service
+      - pharmacy-service
+      - scheduling-service
+      - inventory-service
+      - notification-service
+    networks:
+      - medilink_network
+
+networks:
+  medilink_network:
+    driver: bridge
+
+volumes:
+  postgres_data:

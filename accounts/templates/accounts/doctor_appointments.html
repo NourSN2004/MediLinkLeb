@@ -1,0 +1,91 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Appointments</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <style>
+    body { background: var(--bg); }
+    .tabs { display:flex; gap:.5rem; margin-bottom: .9rem; }
+    .tab { padding:.45rem .75rem; border:1px solid var(--line); border-radius:999px; text-decoration:none; color:var(--ink); }
+    .tab.active { background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; border-color:transparent; }
+    .auth-card { max-width:1200px; margin:0 auto; }
+    .list { background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; box-shadow:var(--shadow); }
+    .row { display:grid; grid-template-columns: 2.2fr 2fr 1fr 1.6fr; gap:.6rem; padding:.75rem; border-bottom:1px solid var(--line); align-items:center; transition:background .15s ease; }
+    .row.head { background:linear-gradient(90deg, rgba(14,165,164,.08), rgba(2,132,199,.08)); color:var(--ink-dim); font-weight:800; }
+    .row:last-child { border-bottom:0; }
+    .row:hover { background:#f8fafc; }
+    .row.status-scheduled { border-left:4px solid #10b981; }
+    .row.status-cancelled { border-left:4px solid #ef4444; }
+    .row.status-completed { border-left:4px solid #6366f1; }
+    .actions { display:flex; gap:.5rem; justify-content:flex-end; flex-wrap:wrap; }
+    .btn { padding:.35rem .55rem; border-radius:10px; border:1px solid var(--line); text-decoration:none; font-weight:800; font-size:.9rem; }
+    .btn.edit { background:#eef7ff; border-color:#cde5ff; color:#0b1221; }
+    .btn.cancel { background:#fee2e2; border-color:#fecaca; color:#991b1b; }
+    .btn.done { background:#dcfce7; border-color:#bbf7d0; color:#166534; }
+    .pill{ display:inline-block; padding:.2rem .5rem; border-radius:999px; font-size:.8rem; font-weight:800; }
+    .pill.status-scheduled{ background:#dcfce7; color:#166534; border:1px solid #bbf7d0; }
+    .pill.status-cancelled{ background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
+    .pill.status-completed{ background:#e0e7ff; color:#3730a3; border:1px solid #c7d2fe; }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card" style="max-width:980px; margin:0 auto;">
+      <h1 class="auth-title">Appointments</h1>
+      <p class="auth-subtitle">Manage upcoming and past appointments.</p>
+      {% if messages %}
+        <div class="messages" style="margin-bottom:.6rem;">
+          {% for message in messages %}
+            <div class="message message-{{ message.tags }}" style="display:flex; align-items:center; gap:.6rem; padding:.6rem .8rem; border:1px solid var(--line); border-radius:10px; background:#ecfdf5; color:#065f46;">
+              <span aria-hidden="true" style="font-weight:900;">✓</span>
+              <span style="flex:1;">{{ message }}</span>
+              <button type="button" onclick="this.parentElement.remove()" style="border:0;background:transparent;font-size:1rem;line-height:1;cursor:pointer;color:inherit;">×</button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <div class="tabs" style="flex-wrap:wrap; align-items:center;">
+        <a class="tab {% if tab == 'today' %}active{% endif %}" href="?tab=today">Today</a>
+        <a class="tab {% if tab == 'upcoming' %}active{% endif %}" href="?tab=upcoming">Upcoming</a>
+        <a class="tab {% if tab == 'past' %}active{% endif %}" href="?tab=past">Past</a>
+        <a class="tab" href="{% url 'doctor_new_appointment' %}">+ New</a>
+        <a class="tab" href="{% url 'doctor_home' %}" style="margin-left:auto;">Back to Dashboard</a>
+      </div>
+
+      <div class="list">
+        <div class="row head"><div>Patient</div><div>Date & Time</div><div>Status</div><div></div></div>
+        {% for a in appointments %}
+          <div class="row status-{{ a.status }}">
+            <div>
+              <div style="font-weight:800">{{ a.patient_name }}</div>
+              <div style="color:var(--ink-dim); font-size:.9rem;">{{ a.patient_email }}</div>
+            </div>
+            <div>{{ a.datetime }}</div>
+            <div><span class="pill status-{{ a.status }}">{{ a.status|title }}</span></div>
+            <div class="actions">
+              <a class="btn" href="{% url 'doctor_appointment_detail' a.id %}">View</a>
+              <a class="btn edit" href="{% url 'doctor_appointment_edit' a.id %}">Edit</a>
+              {% if a.status != 'completed' %}
+                <form method="post" action="{% url 'doctor_appointment_complete' a.id %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn done">Done</button>
+                </form>
+              {% endif %}
+              <form method="post" action="{% url 'doctor_appointment_cancel' a.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn cancel">{% if a.status == 'completed' %}Delete{% else %}Cancel{% endif %}</button>
+              </form>
+            </div>
+          </div>
+        {% empty %}
+            <div class="row"><div style="grid-column:1/-1; color:var(--ink-dim);">No appointments in this view.</div></div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</body>
+</html>

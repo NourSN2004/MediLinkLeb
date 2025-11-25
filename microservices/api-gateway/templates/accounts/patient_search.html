@@ -1,0 +1,59 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Search Patient</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <style>
+    .search-bar { display:flex; gap:.6rem; }
+    .search-input { flex:1; padding:.6rem .7rem; border:1px solid var(--line); background:var(--input-bg); border-radius:10px; }
+    .btn { padding:.6rem .9rem; border-radius:10px; border:1px solid var(--line); background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; font-weight:800; cursor:pointer; }
+    .results { margin-top:1rem; display:flex; flex-direction:column; gap:.6rem; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:.8rem 1rem; display:flex; justify-content:space-between; gap:1rem; align-items:center; }
+    .muted { color:var(--ink-dim); margin-top:1rem; text-align:center; }
+    .meta { color:var(--ink-dim); font-size:.9rem; }
+    .pill { padding:.15rem .55rem; border-radius:999px; border:1px solid var(--line-2); background:#f8fafc; }
+  </style>
+  </head>
+  <body>
+    <div class="auth-container">
+      <div class="auth-card">
+        <h1 class="auth-title">Search Patient</h1>
+        <p class="auth-subtitle">Find by name, email, phone, or ID.</p>
+
+        <form class="search-bar" method="get">
+          <input class="search-input" type="text" name="q" value="{{ q }}" placeholder="e.g., Sarah, 055..., sarah@mail.com" />
+          <button type="submit" class="btn">Search</button>
+          <a class="btn" href="{% url 'doctor_home' %}" style="text-decoration:none; display:grid; place-items:center;">Back</a>
+        </form>
+
+        {% if q and not results %}
+          <div class="muted">No patients found for “{{ q }}”.</div>
+        {% endif %}
+
+        {% if results %}
+          <div class="results">
+            {% for p in results %}
+              <div class="card">
+                <div>
+                  <div style="font-weight:800">{{ p.name }}</div>
+                  <div class="meta">ID: {{ p.id }} • {{ p.email }} • {{ p.phone }}</div>
+                </div>
+                <div>
+                  {% if p.upcoming_count %}
+                    <div class="pill">Upcoming: {{ p.upcoming_count }}{% if p.next_time %} • Next {{ p.next_time }}{% endif %}</div>
+                  {% else %}
+                    <div class="pill">No upcoming visits</div>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </body>
+  </html>
+

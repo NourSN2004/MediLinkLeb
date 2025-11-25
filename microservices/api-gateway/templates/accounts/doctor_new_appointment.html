@@ -1,0 +1,163 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Appointment</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <style>
+    .form { display:grid; gap:.9rem; }
+    .group { display:grid; grid-template-columns: 1fr 1fr; gap:.6rem; }
+    .input, select, textarea { width:100%; padding:.6rem .7rem; border:1px solid var(--line); background:var(--input-bg); border-radius:10px; }
+    .actions { display:flex; gap:.6rem; margin-top:1rem; }
+    .btn { padding:.6rem .9rem; border-radius:10px; border:1px solid var(--line); background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; font-weight:800; cursor:pointer; }
+    .btn-secondary { padding:.6rem .9rem; border-radius:10px; border:1px solid var(--line); background:var(--btn-secondary-bg); color:var(--ink); font-weight:800; text-decoration:none; display:inline-grid; place-items:center; }
+    .switch { display:flex; align-items:center; gap:.5rem; }
+    .hint { color:var(--ink-dim); font-size:.9rem; }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card" style="max-width:720px; margin:0 auto;">
+      {% if messages %}
+        <div class="messages">
+          {% for message in messages %}
+            <div class="message message-{{ message.tags }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <h1 class="auth-title">New Appointment</h1>
+      <p class="auth-subtitle">Choose a date, time and patient.</p>
+
+      <form class="form" method="post" id="createForm">
+        {% csrf_token %}
+
+        <div class="group">
+          <div>
+            <label class="form-label">Date</label>
+            <input class="input" type="date" name="date" value="{% if selected_date %}{{ selected_date|date:'Y-m-d' }}{% endif %}" required>
+          </div>
+          <div>
+            <label class="form-label">Time</label>
+            {% if available_slots %}
+              <select name="time" required>
+                <option value="">Select a time</option>
+                {% for t in available_slots %}
+                  <option value="{{ t }}">{{ t }}</option>
+                {% endfor %}
+              </select>
+              <div class="hint">Slots shown for the selected date based on your hours.</div>
+            {% else %}
+              <input class="input" type="time" name="time" step="900" required>
+              <div class="hint">No predefined slots for this date. Enter a custom time.</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label">Patient</label>
+          <div class="switch">
+            <label><input type="radio" name="patient_mode" value="existing" checked> Select existing</label>
+            <label><input type="radio" name="patient_mode" value="new"> Add new</label>
+          </div>
+
+          <div id="existingBlock" style="margin-top:.6rem;">
+            <div style="display:flex; gap:.4rem; margin-bottom:.4rem;">
+              <input class="input" type="text" placeholder="Filter patients (optional)" name="q" id="patientFilter" value="{{ q }}">
+              <button class="btn-secondary" type="button" id="filterBtn" style="min-width:100px;">Filter</button>
+            </div>
+            <select name="patient_id" style="margin-top:.2rem;">
+              {% for p in patients %}
+                <option value="{{ p.pk }}">{{ p.patient_id.name }} - {{ p.patient_id.email }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div id="newBlock" style="margin-top:.6rem; display:none;">
+            <div class="group">
+              <input class="input" type="text" name="new_first_name" placeholder="First name">
+              <input class="input" type="text" name="new_last_name" placeholder="Last name">
+            </div>
+            <div class="group" style="grid-template-columns: 1.2fr .8fr;">
+              <input class="input" type="email" name="new_email" placeholder="Email" required>
+              <input class="input" type="text" name="new_phone" placeholder="Phone (optional)">
+            </div>
+            <input class="input" type="text" name="new_national_id" placeholder="National ID (optional)">
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label">Notes (optional)</label>
+          <textarea name="notes" rows="3" class="input" placeholder="Reason, context..."></textarea>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn" id="createBtn">Create Appointment</button>
+          <a href="{% url 'doctor_home' %}" class="btn-secondary">Back to Dashboard</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const radios = document.querySelectorAll('input[name="patient_mode"]');
+    const existingBlock = document.getElementById('existingBlock');
+    const newBlock = document.getElementById('newBlock');
+    const patientSelect = document.querySelector('select[name="patient_id"]');
+    const newEmailInput = document.querySelector('input[name="new_email"]');
+    function toggleMode(){
+      const mode = document.querySelector('input[name="patient_mode"]:checked').value;
+      if (mode === 'existing') {
+        existingBlock.style.display='block';
+        newBlock.style.display='none';
+        if (patientSelect) patientSelect.setAttribute('required','');
+        if (newEmailInput) newEmailInput.removeAttribute('required');
+      } else {
+        existingBlock.style.display='none';
+        newBlock.style.display='block';
+        if (patientSelect) patientSelect.removeAttribute('required');
+        if (newEmailInput) newEmailInput.setAttribute('required','');
+      }
+    }
+    radios.forEach(r => r.addEventListener('change', toggleMode));
+    toggleMode();
+
+    // Filter patients without breaking the POST form
+    const filterBtn = document.getElementById('filterBtn');
+    if (filterBtn) {
+      filterBtn.addEventListener('click', () => {
+        const q = document.getElementById('patientFilter')?.value || '';
+        const dateVal = document.querySelector('input[name="date"]')?.value || '';
+        const url = new URL(window.location.href);
+        if (q) url.searchParams.set('q', q); else url.searchParams.delete('q');
+        if (dateVal) url.searchParams.set('date', dateVal); else url.searchParams.delete('date');
+        window.location.href = url.toString();
+      });
+    }
+
+    // Auto-refresh slots list when date changes
+    const dateInput = document.querySelector('input[name="date"]');
+    if (dateInput) {
+      dateInput.addEventListener('change', () => {
+        const url = new URL(window.location.href);
+        const q = document.getElementById('patientFilter')?.value || '';
+        url.searchParams.set('date', dateInput.value);
+        if (q) url.searchParams.set('q', q); else url.searchParams.delete('q');
+        window.location.href = url.toString();
+      });
+    }
+
+    // UX: disable submit button after click
+    const createForm = document.getElementById('createForm');
+    const createBtn = document.getElementById('createBtn');
+    if (createForm && createBtn) {
+      createForm.addEventListener('submit', () => {
+        createBtn.disabled = true;
+        createBtn.textContent = 'Creating…';
+      });
+    }
+  </script>
+</body>
+</html>

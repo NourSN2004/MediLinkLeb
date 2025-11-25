@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediLink - Healthcare Management System</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏥 MediLink</h1>
+            <p class="subtitle">Healthcare Management System - Microservices Edition</p>
+        </header>
+
+        <main>
+            <div class="hero">
+                <h2>Welcome to MediLink</h2>
+                <p>A modern healthcare management platform built with microservices architecture</p>
+            </div>
+
+            <div class="features">
+                <div class="feature-card">
+                    <h3>👨‍⚕️ For Doctors</h3>
+                    <p>Manage appointments, patient records, and schedules efficiently</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🧑‍🤝‍🧑 For Patients</h3>
+                    <p>Book appointments, view medical history, and browse medicines</p>
+                </div>
+                <div class="feature-card">
+                    <h3>💊 For Pharmacies</h3>
+                    <p>Track inventory, manage stock, and handle prescriptions</p>
+                </div>
+            </div>
+
+            <div class="status">
+                <h3>System Status</h3>
+                <div id="service-status">
+                    <p>Loading services...</p>
+                </div>
+            </div>
+
+            <div class="architecture">
+                <h3>Microservices Architecture</h3>
+                <ul>
+                    <li><strong>API Gateway:</strong> NGINX reverse proxy serving this frontend</li>
+                    <li><strong>Auth Service:</strong> User authentication and authorization (3 replicas)</li>
+                    <li><strong>Doctor Service:</strong> Doctor profiles and availability (3 replicas)</li>
+                    <li><strong>Patient Service:</strong> Patient profiles and medical history (4 replicas)</li>
+                    <li><strong>Pharmacy Service:</strong> Pharmacy management (2 replicas)</li>
+                    <li><strong>Scheduling Service:</strong> Appointment scheduling (4 replicas)</li>
+                    <li><strong>Inventory Service:</strong> Medicine catalog and stock (3 replicas)</li>
+                    <li><strong>Notification Service:</strong> Alerts and notifications (2 replicas)</li>
+                </ul>
+                <p><strong>Total Pods:</strong> 25 backend + 4 gateway = 29 application pods</p>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 MediLink - Built with Django REST Framework & Kubernetes</p>
+        </footer>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

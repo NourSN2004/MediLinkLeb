@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: medilink
+data:
+  DEBUG: "False"
+  ALLOWED_HOSTS: "*"
+  CORS_ALLOW_ALL: "True"
+  SITE_URL: "http://localhost:8080"
+
+  # Service URLs for inter-service communication
+  AUTH_SERVICE_URL: "http://auth-service:8001"
+  DOCTOR_SERVICE_URL: "http://doctor-service:8002"
+  PATIENT_SERVICE_URL: "http://patient-service:8003"
+  PHARMACY_SERVICE_URL: "http://pharmacy-service:8004"
+  SCHEDULING_SERVICE_URL: "http://scheduling-service:8005"
+  INVENTORY_SERVICE_URL: "http://inventory-service:8006"
+  NOTIFICATION_SERVICE_URL: "http://notification-service:8007"
+
+  # Email configuration (console backend for development)
+  EMAIL_BACKEND: "django.core.mail.backends.console.EmailBackend"
+  DEFAULT_FROM_EMAIL: "noreply@medilink.com"

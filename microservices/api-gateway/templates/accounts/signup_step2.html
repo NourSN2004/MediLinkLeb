@@ -1,0 +1,52 @@
+{% extends 'accounts/base.html' %}
+{% load static %}
+
+{% block title %}Create Account — Step 2{% endblock %}
+{% block extra_head %}<meta name="color-scheme" content="light dark">{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="step-indicator">
+      <span class="step-number completed">1</span>
+      <span class="step-divider on"></span>
+      <span class="step-number active" aria-current="step">2</span>
+    </div>
+
+    <h1 class="auth-title">Create your account</h1>
+    <p class="auth-subtitle">Enter your details to access the clinic platform.</p>
+
+    <form class="auth-form" method="post" novalidate>
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label class="form-label" for="id_name">Full Name</label>
+        <input type="text" name="name" id="id_name" class="form-control" placeholder="Enter your full name" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="id_email">Email</label>
+        <input type="email" name="email" id="id_email" class="form-control" placeholder="Enter your email" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="id_password">Password</label>
+        <input type="password" name="password" id="id_password" class="form-control" placeholder="Enter your password" required>
+        <p class="form-hint">Use at least 8 characters with a mix of letters & numbers.</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="id_password_confirm">Confirm password</label>
+        <input type="password" name="password_confirm" id="id_password_confirm" class="form-control" placeholder="Confirm your password" required>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full">Create account</button>
+    </form>
+
+    <div class="auth-footer">
+      Already have an account?
+      <a href="{% url 'login' %}" class="auth-link">Sign in</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

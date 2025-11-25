@@ -1,0 +1,1 @@
+# API Gateway Django Application

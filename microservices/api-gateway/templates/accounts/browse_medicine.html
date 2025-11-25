@@ -1,0 +1,257 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Browse Medicine - Medilink</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <style>
+    :root{ --sidebar-w:260px; --transition:.25s ease; }
+    html,body{ height:100%; margin:0; background:#f8fafc; }
+    .app{ height:100vh; width:100vw; display:grid; grid-template-columns:var(--sidebar-w) 1fr; transition:var(--transition); overflow:hidden; }
+    .app.is-collapsed{ grid-template-columns:72px 1fr; }
+    .sidebar{ background:#fff; border-right:1px solid var(--line); display:flex; flex-direction:column; overflow:hidden; transition:var(--transition); }
+    .brand{ display:flex; align-items:center; gap:.6rem; padding:1rem; border-bottom:1px solid var(--line); }
+    .brand .logo{ width:36px; height:36px; border-radius:10px; display:grid; place-items:center; background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; font-weight:800; }
+    .brand h1{ font-size:1.05rem; margin:0; letter-spacing:.2px; }
+    .side-section{ padding:.75rem 1rem; }
+    .side-title{ font-size:.8rem; font-weight:800; color:var(--ink-dim); margin:.4rem 0 .3rem; }
+    .nav{ display:flex; flex-direction:column; gap:.4rem; }
+    .nav a{ display:flex; align-items:center; gap:.55rem; padding:.7rem .6rem; border-radius:10px; color:var(--ink); text-decoration:none; border:1px solid transparent; transition:.15s; }
+    .nav a:hover{ background:#f1f5f9; border-color:var(--line); }
+    .nav a.active{ background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; }
+    .collapse-btn{ border-top:1px solid var(--line); padding:.6rem 1rem; margin-top:auto; }
+    .collapse-btn button{ width:100%; border:1px solid var(--line); background:#fff; color:var(--ink); padding:.6rem; border-radius:10px; cursor:pointer; font-weight:700; }
+    .app.is-collapsed .brand h1, .app.is-collapsed .side-title, .app.is-collapsed .nav a span.label{ display:none; }
+    .app.is-collapsed .nav a{ justify-content:center; }
+
+    .main{ display:grid; grid-template-rows:auto 1fr; height:100%; overflow:hidden; }
+    .topbar{ background:#fff; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.75rem 1rem; }
+    .top-left{ display:flex; align-items:center; gap:1rem; }
+    .hamburger{ display:none; width:38px; height:38px; border-radius:10px; border:1px solid var(--line); background:#fff; cursor:pointer; }
+    .top-title{ font-weight:800; font-size:1.05rem; }
+    .top-right{ display:flex; align-items:center; gap:.9rem; }
+    .avatar{ width:36px; height:36px; border-radius:999px; display:grid; place-items:center; color:#fff; background:linear-gradient(135deg,var(--brand1),var(--brand2)); font-weight:800; }
+    .btn-ghost{ border:1px solid var(--line); background:#fff; color:var(--ink); padding:.45rem .7rem; border-radius:10px; cursor:pointer; font-weight:700; transition:background .2s ease; }
+    .btn-ghost:hover{ background:#f1f5f9; }
+
+    .content{ padding:1.5rem; height:100%; overflow-y:auto; background:#f8fafc; }
+    .page-header{ margin-bottom:1.5rem; }
+    .page-header h1{ font-size:1.75rem; font-weight:800; margin-bottom:.4rem; }
+    .page-header p{ color:var(--ink-dim); }
+
+    .search-bar{ background:#fff; border:2px solid var(--line); border-radius:12px; padding:.8rem 1rem; margin-bottom:1.5rem; display:flex; align-items:center; gap:.8rem; }
+    .search-bar input{ flex:1; border:none; outline:none; font-size:1rem; color:var(--ink); }
+    .search-bar input::placeholder{ color:var(--muted); }
+    .search-bar button{ background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; border:none; padding:.6rem 1.2rem; border-radius:8px; font-weight:700; cursor:pointer; transition:.15s; }
+    .search-bar button:hover{ transform:translateY(-2px); box-shadow:0 4px 12px rgba(99,102,241,.3); }
+
+    .results-header{ margin-bottom:1rem; color:var(--ink-dim); font-size:.95rem; }
+
+    .medicine-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:1.2rem; }
+    .medicine-card{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:1.25rem; transition:.15s; }
+    .medicine-card:hover{ border-color:var(--brand2); box-shadow:0 0 0 3px var(--focus); transform:translateY(-2px); }
+    .med-header{ display:flex; align-items:start; gap:1rem; margin-bottom:1rem; }
+    .med-icon{ width:56px; height:56px; background:linear-gradient(135deg,rgba(14,165,164,.1),rgba(2,132,199,.1)); border-radius:12px; display:grid; place-items:center; flex-shrink:0; }
+    .med-info{ flex:1; }
+    .med-name{ font-size:1.1rem; font-weight:800; color:var(--ink); margin-bottom:.3rem; }
+    .med-form{ font-size:.85rem; color:var(--ink-dim); font-weight:600; }
+    .med-strength{ display:inline-block; padding:.25rem .6rem; background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; border-radius:6px; font-size:.75rem; font-weight:700; margin-top:.4rem; }
+    .med-description{ font-size:.9rem; color:var(--ink-dim); line-height:1.5; margin-bottom:1rem; }
+    .availability{ }
+    .avail-header{ font-size:.85rem; font-weight:700; color:var(--ink); margin-bottom:.6rem; }
+    .avail-badge{ display:inline-flex; align-items:center; gap:.4rem; padding:.3rem .6rem; border-radius:6px; font-size:.8rem; font-weight:600; margin-bottom:.5rem; }
+    .avail-badge.in-stock{ background:#dcfce7; color:#16a34a; }
+    .avail-badge.out-of-stock{ background:#fee2e2; color:#dc2626; }
+    .pharmacy-list{ display:flex; flex-direction:column; gap:.5rem; margin-top:.6rem; }
+    .pharmacy-item{ display:flex; justify-content:space-between; align-items:center; padding:.5rem .7rem; background:#f8fafc; border-radius:8px; font-size:.85rem; }
+    .pharmacy-name{ font-weight:600; color:var(--ink); }
+    .pharmacy-price{ font-weight:800; color:var(--brand1); }
+    .show-more{ color:var(--brand2); font-size:.8rem; font-weight:600; cursor:pointer; margin-top:.4rem; }
+    .show-more:hover{ text-decoration:underline; }
+
+    .empty-state{ text-align:center; padding:4rem 1rem; background:#fff; border:1px solid var(--line); border-radius:12px; }
+    .empty-state svg{ margin:0 auto 1.5rem; opacity:.3; }
+    .empty-state p{ color:var(--ink-dim); margin:.5rem 0; font-size:1.1rem; }
+
+    @media (max-width:1020px){ 
+      .hamburger{ display:grid; }
+      .medicine-grid{ grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="appShell">
+    <aside class="sidebar">
+      <div class="brand"><div class="logo">ML</div><h1>Medilink</h1></div>
+      <div class="side-section">
+        <div class="side-title">Quick Actions</div>
+        <nav class="nav">
+          <a href="{% url 'patient_home' %}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg><span class="label">View Full Schedule</span>
+          </a>
+          <a href="{% url 'schedule_appointment' %}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14M5 12h14"></path>
+            </svg><span class="label">Schedule Appointment</span>
+          </a>
+          <a href="{% url 'view_medical_history' %}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"></path>
+            </svg><span class="label">View Medical History</span>
+          </a>
+          <a href="{% url 'view_prescriptions' %}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg><span class="label">View Prescriptions</span>
+          </a>
+          <a href="{% url 'browse_medicine' %}" class="active">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path>
+            </svg><span class="label">Browse Medicine</span>
+          </a>
+        </nav>
+      </div>
+      <div class="collapse-btn"><button type="button" id="toggleBtn">Collapse Sidebar</button></div>
+    </aside>
+
+    <section class="main">
+      <header class="topbar">
+        <div class="top-left">
+          <button class="hamburger" id="hamburger" aria-label="Toggle sidebar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+          <div class="top-title">Browse Medicine</div>
+        </div>
+        <div class="top-right">
+          <div class="avatar">{{ patient_name|first|upper }}</div>
+          <div>
+            <div style="font-weight:800;">{{ patient_name }}</div>
+            <small style="color:var(--ink-dim);">{{ today }}</small>
+          </div>
+          <form action="{% url 'logout' %}" method="post" style="margin-left:.5rem;">
+            {% csrf_token %}
+            <button type="submit" class="btn-ghost">Sign out</button>
+          </form>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="page-header">
+          <h1>🔍 Browse Medicine</h1>
+          <p>Search and find available medications from pharmacies</p>
+        </div>
+
+        <form method="get" class="search-bar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input type="text" name="search" placeholder="Search by medicine name, form, or strength..." value="{{ search_query }}">
+          <button type="submit">Search</button>
+        </form>
+
+        {% if search_query %}
+          <div class="results-header">
+            Found {{ total_medicines }} medicine(s) for "{{ search_query }}"
+          </div>
+        {% else %}
+          <div class="results-header">
+            Showing {{ total_medicines }} available medicine(s)
+          </div>
+        {% endif %}
+
+        {% if medicine_list %}
+          <div class="medicine-grid">
+            {% for item in medicine_list %}
+              <div class="medicine-card">
+                <div class="med-header">
+                  <div class="med-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                  </div>
+                  <div class="med-info">
+                    <div class="med-name">{{ item.medicine.name }}</div>
+                    <div class="med-form">{{ item.medicine.dosage_form }}</div>
+                    <span class="med-strength">{{ item.medicine.strength }}</span>
+                  </div>
+                </div>
+
+                {% if item.medicine.description %}
+                  <div class="med-description">{{ item.medicine.description }}</div>
+                {% endif %}
+
+                <div class="availability">
+                  <div class="avail-header">Availability</div>
+                  {% if item.in_stock %}
+                    <span class="avail-badge in-stock">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                      In Stock at {{ item.total_pharmacies }} pharmacy/ies
+                    </span>
+                    
+                    <div class="pharmacy-list">
+                      {% for pharmacy in item.pharmacies %}
+                        <div class="pharmacy-item">
+                          <span class="pharmacy-name">{{ pharmacy.pharmacy_name }}</span>
+                          <span class="pharmacy-price">${{ pharmacy.price }}</span>
+                        </div>
+                      {% endfor %}
+                      
+                      {% if item.total_pharmacies > 3 %}
+                        <div class="show-more">+ {{ item.total_pharmacies|add:"-3" }} more pharmacies</div>
+                      {% endif %}
+                    </div>
+                  {% else %}
+                    <span class="avail-badge out-of-stock">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                      Currently Out of Stock
+                    </span>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state">
+            <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <p><strong>No medicines found</strong><br>
+            {% if search_query %}
+              Try searching with different keywords
+            {% else %}
+              No medicines available at the moment
+            {% endif %}
+            </p>
+          </div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const app=document.getElementById('appShell');
+    const btn=document.getElementById('toggleBtn');
+    const burger=document.getElementById('hamburger');
+    const toggle=()=>{
+      app.classList.toggle('is-collapsed');
+      btn.textContent=app.classList.contains('is-collapsed')?'Expand Sidebar':'Collapse Sidebar';
+    };
+    if(btn) btn.addEventListener('click',toggle);
+    if(burger) burger.addEventListener('click',toggle);
+  </script>
+</body>
+</html>

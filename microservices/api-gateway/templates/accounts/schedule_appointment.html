@@ -1,0 +1,276 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Schedule Appointment - Medilink</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <style>
+    :root{ --sidebar-w:260px; --transition:.25s ease; }
+    html,body{ height:100%; margin:0; background:#f8fafc; }
+    .app{ height:100vh; width:100vw; display:grid; grid-template-columns:var(--sidebar-w) 1fr; transition:var(--transition); overflow:hidden; }
+    .app.is-collapsed{ grid-template-columns:72px 1fr; }
+    .sidebar{ background:#fff; border-right:1px solid var(--line); display:flex; flex-direction:column; overflow:hidden; transition:var(--transition); }
+    .brand{ display:flex; align-items:center; gap:.6rem; padding:1rem; border-bottom:1px solid var(--line); }
+    .brand .logo{ width:36px; height:36px; border-radius:10px; display:grid; place-items:center; background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; font-weight:800; }
+    .brand h1{ font-size:1.05rem; margin:0; letter-spacing:.2px; }
+    .side-section{ padding:.75rem 1rem; }
+    .side-title{ font-size:.8rem; font-weight:800; color:var(--ink-dim); margin:.4rem 0 .3rem; }
+    .nav{ display:flex; flex-direction:column; gap:.4rem; }
+    .nav a{ display:flex; align-items:center; gap:.55rem; padding:.7rem .6rem; border-radius:10px; color:var(--ink); text-decoration:none; border:1px solid transparent; transition:.15s; }
+    .nav a:hover{ background:#f1f5f9; border-color:var(--line); }
+    .nav a.active{ background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; }
+    .collapse-btn{ border-top:1px solid var(--line); padding:.6rem 1rem; margin-top:auto; }
+    .collapse-btn button{ width:100%; border:1px solid var(--line); background:#fff; color:var(--ink); padding:.6rem; border-radius:10px; cursor:pointer; font-weight:700; }
+    .app.is-collapsed .brand h1, .app.is-collapsed .side-title, .app.is-collapsed .nav a span.label{ display:none; }
+    .app.is-collapsed .nav a{ justify-content:center; }
+
+    .main{ display:grid; grid-template-rows:auto 1fr; height:100%; overflow:hidden; }
+    .topbar{ background:#fff; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.75rem 1rem; }
+    .top-left{ display:flex; align-items:center; gap:1rem; }
+    .hamburger{ display:none; width:38px; height:38px; border-radius:10px; border:1px solid var(--line); background:#fff; cursor:pointer; }
+    .top-title{ font-weight:800; font-size:1.05rem; }
+    .top-right{ display:flex; align-items:center; gap:.9rem; }
+    .avatar{ width:36px; height:36px; border-radius:999px; display:grid; place-items:center; color:#fff; background:linear-gradient(135deg,var(--brand1),var(--brand2)); font-weight:800; }
+    .btn-ghost{ border:1px solid var(--line); background:#fff; color:var(--ink); padding:.45rem .7rem; border-radius:10px; cursor:pointer; font-weight:700; transition:background .2s ease; }
+    .btn-ghost:hover{ background:#f1f5f9; }
+
+    .content{ padding:1.5rem; height:100%; overflow-y:auto; background:#f8fafc; }
+    .page-header{ margin-bottom:1.5rem; }
+    .page-header h1{ font-size:1.75rem; font-weight:800; margin-bottom:.4rem; }
+    .page-header p{ color:var(--ink-dim); }
+
+    .form-container{ max-width:700px; margin:0 auto; }
+    .form-card{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:2rem; }
+    .form-section{ margin-bottom:2rem; }
+    .section-title{ font-size:1.1rem; font-weight:800; margin-bottom:1rem; color:var(--ink); }
+    .form-group{ margin-bottom:1.5rem; }
+    .form-label{ display:block; font-size:.9rem; font-weight:600; color:var(--ink); margin-bottom:.5rem; }
+    .form-input{ width:100%; padding:.75rem 1rem; border:2px solid var(--line); border-radius:10px; font-size:.95rem; transition:.15s; }
+    .form-input:focus{ outline:none; border-color:var(--brand2); box-shadow:0 0 0 3px var(--focus); }
+    .form-textarea{ min-height:100px; resize:vertical; font-family:inherit; }
+    .form-hint{ font-size:.85rem; color:var(--ink-dim); margin-top:.4rem; }
+
+    .doctor-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:1rem; margin-bottom:1.5rem; }
+    .doctor-card{ border:2px solid var(--line); border-radius:12px; padding:1.25rem; cursor:pointer; transition:.15s; }
+    .doctor-card:hover{ border-color:var(--brand2); box-shadow:0 0 0 3px var(--focus); }
+    .doctor-card.selected {
+      border-color: #10b981;
+      background: #ecfdf5;
+      box-shadow: 0 0 0 3px rgba(16,185,129,0.2);
+    }
+    .doctor-radio{ display:none; }
+    .doctor-header{ display:flex; align-items:center; gap:1rem; margin-bottom:.8rem; }
+    .doctor-avatar{ width:48px; height:48px; border-radius:999px; background:linear-gradient(135deg,var(--brand1),var(--brand2)); display:grid; place-items:center; color:#fff; font-weight:800; flex-shrink:0; }
+    .doctor-name{ font-size:1.05rem; font-weight:800; color:var(--ink); }
+    .doctor-specialty{ font-size:.85rem; color:var(--ink-dim); font-weight:600; }
+
+    .view-availability-btn{
+      margin-top:.6rem;
+      width:100%;
+      background:#f1f5f9;
+      border:1px solid #e5e7eb;
+      border-radius:8px;
+      padding:.5rem;
+      font-weight:600;
+      cursor:pointer;
+      transition:background .2s;
+    }
+    .view-availability-btn:hover{ background:#e0f2fe; }
+
+    .btn-primary{ width:100%; padding:1rem 1.5rem; background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; border:none; border-radius:12px; font-size:1rem; font-weight:700; cursor:pointer; transition:.15s; }
+    .btn-primary:hover{ transform:translateY(-2px); box-shadow:0 4px 16px rgba(14,165,164,.3); }
+    .btn-primary:disabled{ opacity:.5; cursor:not-allowed; transform:none; }
+
+    .empty-state{ text-align:center; padding:3rem 1rem; }
+    .empty-state svg{ margin:0 auto 1rem; opacity:.3; }
+    .empty-state p{ color:var(--ink-dim); }
+
+    @media (max-width:1020px){ 
+      .hamburger{ display:grid; }
+      .doctor-grid{ grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="appShell">
+    <aside class="sidebar">
+      <div class="brand"><div class="logo">ML</div><h1>Medilink</h1></div>
+      <div class="side-section">
+        <div class="side-title">Quick Actions</div>
+        <nav class="nav">
+          <a href="{% url 'patient_home' %}"><span class="label">View Full Schedule</span></a>
+          <a href="{% url 'schedule_appointment' %}" class="active"><span class="label">Schedule Appointment</span></a>
+          <a href="{% url 'view_medical_history' %}"><span class="label">View Medical History</span></a>
+          <a href="{% url 'view_prescriptions' %}"><span class="label">View Prescriptions</span></a>
+          <a href="{% url 'browse_medicine' %}"><span class="label">Browse Medicine</span></a>
+        </nav>
+      </div>
+      <div class="collapse-btn"><button type="button" id="toggleBtn">Collapse Sidebar</button></div>
+    </aside>
+
+    <section class="main">
+      <header class="topbar">
+        <div class="top-left">
+          <button class="hamburger" id="hamburger" aria-label="Toggle sidebar">☰</button>
+          <div class="top-title">Schedule Appointment</div>
+        </div>
+        <div class="top-right">
+          <div class="avatar">{{ patient_name|first|upper }}</div>
+          <div><div style="font-weight:800;">{{ patient_name }}</div><small style="color:var(--ink-dim);">{{ today }}</small></div>
+          <form action="{% url 'logout' %}" method="post" style="margin-left:.5rem;">{% csrf_token %}<button type="submit" class="btn-ghost">Sign out</button></form>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="page-header"><h1>📅 Schedule Appointment</h1><p>Book a consultation with one of our doctors</p></div>
+          {% if messages %}
+            <div class="flash-container" style="margin-bottom:1rem;">
+              {% for message in messages %}
+                <div class="flash-message {% if message.tags == 'success' %}flash-success{% else %}flash-error{% endif %}">
+                  {{ message }}
+                </div>
+              {% endfor %}
+            </div>
+
+            <style>
+              .flash-message {
+                padding: 0.85rem 1.1rem;
+                border-radius: 10px;
+                font-weight: 600;
+                text-align: center;
+                transition: opacity 0.5s ease;
+              }
+              .flash-success {
+                color: #065f46;
+                background: #ecfdf5;
+                border: 1px solid #10b981;
+              }
+              .flash-error {
+                color: #7f1d1d;
+                background: #fee2e2;
+                border: 1px solid #ef4444;
+              }
+            </style>
+
+            <script>
+              // fade out after 5 seconds
+              setTimeout(() => {
+                document.querySelectorAll('.flash-message').forEach(msg => {
+                  msg.style.opacity = '0';
+                  setTimeout(() => msg.remove(), 600);
+                });
+              }, 5000);
+            </script>
+          {% endif %}
+
+
+        
+        <div class="form-container">
+          <div class="form-card">
+            <form method="post" id="appointmentForm">{% csrf_token %}
+              <div class="form-section">
+                <div class="section-title">1. Select Doctor</div>
+                {% if doctors %}
+                  <div class="doctor-grid">
+                    {% for doctor in doctors %}
+                      <div class="doctor-card {% if preset_doctor_id|stringformat:'s' == doctor.doctor_id.id|stringformat:'s' %}selected{% endif %}"
+                        data-doctor-id="{{ doctor.doctor_id.id }}">
+
+                        <label>
+                      <input type="radio" name="doctor" value="{{ doctor.doctor_id.id }}" class="doctor-radio" required
+                        {% if preset_doctor_id|stringformat:'s' == doctor.doctor_id.id|stringformat:'s' %}checked{% endif %}>
+                            <div class="doctor-header">
+                            <div class="doctor-avatar">{{ doctor.doctor_id.name|first|upper }}</div>
+                            <div>
+                              <div class="doctor-name">{{ doctor.doctor_id.name }}</div>
+                              <div class="doctor-specialty">{{ doctor.specialty|default:"General Practitioner" }}</div>
+                            </div>
+                          </div>
+                        </label>
+
+                        <button type="button"
+                          class="view-availability-btn"
+                          data-url="{% url 'view_doctor_availability' doctor.doctor_id.id %}">
+                          View Availability
+                        </button>
+
+                        <script>
+                          document.querySelectorAll('.view-availability-btn').forEach(btn=>{
+                            btn.addEventListener('click',()=>{
+                              window.open(btn.dataset.url, '_blank');
+                            });
+                          });
+                        </script>
+
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <div class="empty-state"><p>No doctors available at the moment</p></div>
+                {% endif %}
+              </div>
+
+              <!-- ✅ UPDATED SECTION -->
+              <div class="form-section">
+                <div class="section-title">2. Choose Date & Time</div>
+
+                {% if preset_date and preset_time %}
+                  <div style="background:#ecfdf5;border:1px solid #10b981;padding:0.85rem 1rem;border-radius:10px;margin-bottom:1rem;color:#065f46;font-weight:600;text-align:center;">
+                    ✅ Slot selected: {{ preset_date }} at {{ preset_time }}
+                  </div>
+                {% endif %}
+
+                <div class="form-group">
+                  <label class="form-label" for="date">Appointment Date</label>
+                  <input type="date" id="date" name="date" class="form-input"
+                         value="{{ preset_date }}"
+                         {% if preset_date %}readonly style="background:#f1f5f9;cursor:not-allowed;"{% endif %}
+                         required min="{{ today }}">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="time">Appointment Time</label>
+                  <input type="time" id="time" name="time" class="form-input"
+                         value="{{ preset_time }}"
+                         {% if preset_time %}readonly style="background:#f1f5f9;cursor:not-allowed;"{% endif %}
+                         required>
+                </div>
+              </div>
+              <!-- ✅ END UPDATE -->
+
+              <div class="form-section">
+                <div class="section-title">3. Additional Information (Optional)</div>
+                <div class="form-group">
+                  <label class="form-label" for="notes">Reason for Visit / Notes</label>
+                  <textarea id="notes" name="notes" class="form-input form-textarea" placeholder="Describe your symptoms..."></textarea>
+                </div>
+              </div>
+
+              <button type="submit" class="btn-primary">Book Appointment</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const app=document.getElementById('appShell');
+    const btn=document.getElementById('toggleBtn');
+    const burger=document.getElementById('hamburger');
+    const toggle=()=>{ app.classList.toggle('is-collapsed'); btn.textContent=app.classList.contains('is-collapsed')?'Expand Sidebar':'Collapse Sidebar'; };
+    if(btn) btn.addEventListener('click',toggle);
+    if(burger) burger.addEventListener('click',toggle);
+    document.querySelectorAll('.doctor-card').forEach(card=>{
+      card.addEventListener('click',function(){
+        document.querySelectorAll('.doctor-card').forEach(c=>c.classList.remove('selected'));
+        this.classList.add('selected');
+        this.querySelector('.doctor-radio').checked=true;
+      });
+    });
+    const today=new Date().toISOString().split('T')[0];
+    document.getElementById('date').setAttribute('min',today);
+  </script>
+</body>
+</html>

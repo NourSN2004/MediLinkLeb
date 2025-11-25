@@ -1,0 +1,46 @@
+<!-- error.html -->
+{% extends 'accounts/base.html' %}
+{% load static %}
+
+{% block title %}Access Denied{% endblock %}
+{% block extra_head %}
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="{% static 'css/error.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="error-card">
+  <div class="error-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+    </svg>
+  </div>
+
+  <h1 class="error-title">Access Denied</h1>
+  <p class="error-message">
+    {{ message|default:"You don't have permission to access this page." }}
+  </p>
+
+  <div class="error-actions">
+    <a href="{% url 'home_redirect' %}" class="btn btn-primary">
+      Go to Dashboard
+    </a>
+    <a href="{% url 'login' %}" class="btn btn-secondary">
+      Sign in with Different Account
+    </a>
+  </div>
+
+  <div class="info-box">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="16" x2="12" y2="12"></line>
+      <line x1="12" y1="8" x2="12.01" y2="8"></line>
+    </svg>
+    <p>
+      <strong>Need help?</strong> If you believe this is an error, please contact support or try signing in with the correct account type.
+    </p>
+  </div>
+</div>
+{% endblock %}

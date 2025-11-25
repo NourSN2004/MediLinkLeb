@@ -1,0 +1,70 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ title }} - Settings</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <style>
+    :root { --sidebar-w: 260px; --brand1:#10b981; --brand2:#059669; --line:#e5e7eb; }
+    html, body { height:100%; margin:0; background:#f8fafc; }
+    .app { height:100vh; width:100vw; display:grid; grid-template-columns: var(--sidebar-w) 1fr; }
+    .sidebar { background:#fff; border-right:1px solid var(--line); display:flex; flex-direction:column; }
+    .brand { display:flex; align-items:center; gap:.6rem; padding:1rem; border-bottom:1px solid var(--line); }
+    .brand .logo { width:36px; height:36px; border-radius:10px; display:grid; place-items:center; background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; font-weight:800; }
+    .nav { display:flex; flex-direction:column; gap:.4rem; padding: .75rem 1rem; }
+    .nav a { display:flex; align-items:center; gap:.55rem; padding:.7rem .6rem; border-radius:10px; color:#111827; text-decoration:none; }
+    .nav a:hover { background:#f1f5f9; }
+    .nav a.primary { background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; }
+    .main { display:grid; grid-template-rows:56px 1fr; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; padding:.6rem 1rem; background:#fff; border-bottom:1px solid var(--line); }
+    .content { padding:1rem; }
+    .panel { background:#fff; border:1px solid var(--line); border-radius:12px; max-width:640px; margin:0 auto; }
+    .panel .head { padding:.9rem 1rem; border-bottom:1px solid var(--line); }
+    .panel .body { padding:1rem; }
+    .form { display:grid; gap:.7rem; }
+    .btn { background:linear-gradient(135deg,var(--brand1),var(--brand2)); color:#fff; border:none; padding:.5rem .9rem; border-radius:8px; font-weight:800; cursor:pointer; }
+    .btn-ghost { background:transparent; border:1px solid var(--line); padding:.45rem .8rem; border-radius:8px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><div class="logo">RX</div><h1>Medilink</h1></div>
+      <nav class="nav">
+        <a href="{% url 'pharmacy_home' %}">Dashboard</a>
+        <a href="{% url 'pharmacy_settings' %}" class="primary">Settings</a>
+      </nav>
+    </aside>
+    <section class="main">
+      <div class="topbar">
+        <div class="top-title">{{ title }}</div>
+      </div>
+      <div class="content">
+        {% if messages %}
+          <div class="messages">
+            {% for message in messages %}
+              <div class="message message-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+        <div class="panel">
+          <div class="head"><h2>{{ title }}</h2></div>
+          <div class="body">
+            <form method="post" class="form">
+              {% csrf_token %}
+              {{ form.as_p }}
+              <div>
+                <button type="submit" class="btn">Save</button>
+                <a href="{% url 'pharmacy_settings' %}" class="btn-ghost" style="margin-left:.5rem;">Cancel</a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
+
