@@ -16,6 +16,7 @@ spec:
       serviceAccountName: jenkins
       securityContext:
         fsGroup: 1000
+        supplementalGroups: [999]  # Docker group
         runAsUser: 1000
       initContainers:
       - name: volume-permissions
@@ -26,9 +27,25 @@ spec:
           mountPath: /var/jenkins_home
         securityContext:
           runAsUser: 0
+      - name: install-docker
+        image: docker:dind
+        command: ['sh', '-c', 'cp /usr/local/bin/docker /usr/local/bin/docker-tmp/']
+        volumeMounts:
+        - name: docker-bin
+          mountPath: /usr/local/bin/docker-tmp
+        securityContext:
+          runAsUser: 0
+      - name: install-kubectl
+        image: bitnami/kubectl:latest
+        command: ['sh', '-c', 'cp /opt/bitnami/kubectl/bin/kubectl /usr/local/bin/kubectl-tmp/']
+        volumeMounts:
+        - name: kubectl-bin
+          mountPath: /usr/local/bin/kubectl-tmp
+        securityContext:
+          runAsUser: 0
       containers:
       - name: jenkins
-        image: jenkins/jenkins:lts
+        image: jenkins/jenkins:lts-jdk17
         ports:
         - containerPort: 8080
           name: http
@@ -42,6 +59,12 @@ spec:
           mountPath: /var/jenkins_home
         - name: docker-sock
           mountPath: /var/run/docker.sock
+        - name: docker-bin
+          mountPath: /usr/local/bin/docker
+          subPath: docker
+        - name: kubectl-bin
+          mountPath: /usr/local/bin/kubectl
+          subPath: kubectl
         resources:
           requests:
             memory: "640Mi"
@@ -72,3 +95,7 @@ spec:
       - name: docker-sock
         hostPath:
           path: /var/run/docker.sock
+      - name: docker-bin
+        emptyDir: {}
+      - name: kubectl-bin
+        emptyDir: {}
