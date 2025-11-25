@@ -374,18 +374,65 @@ To restrict further, edit `k8s/jenkins/jenkins-rbac.yaml`
 
 ---
 
-## Integration with GitHub
+## Automatic Builds
 
-### Webhook Setup
+### Current Setup: Manual Builds
 
+By default, you need to click **"Build Now"** in Jenkins after pushing code to GitHub.
+
+### Enable Automatic Builds (3 Options)
+
+#### Option 1: SCM Polling (✅ Works with localhost)
+
+Jenkins checks GitHub every few minutes for changes:
+
+1. Go to pipeline job → **Configure**
+2. Under **Build Triggers**, check **"Poll SCM"**
+3. Schedule: `H/5 * * * *` (checks every 5 minutes)
+   - `H/2 * * * *` = every 2 minutes
+   - `H/10 * * * *` = every 10 minutes
+   - `H * * * *` = every hour
+4. Click **Save**
+
+**Pros:** Works with local Jenkins, no external access needed
+**Cons:** Not instant (delay of up to 5 minutes)
+
+#### Option 2: GitHub Webhook (⚠️ Requires public Jenkins)
+
+Instant builds when you push to GitHub:
+
+**Problem:** Your Jenkins runs on `localhost` - GitHub can't reach it.
+
+**Solutions:**
+- Deploy Jenkins to a cloud provider (AWS, Azure, GCP)
+- Use a tunnel service temporarily (ngrok, localtunnel)
+- Use GitHub Actions instead
+
+**If Jenkins is public:**
 1. Go to GitHub repository settings
 2. Click **Webhooks** → **Add webhook**
-3. Payload URL: `http://jenkins.medilink.local/github-webhook/`
+3. Payload URL: `http://your-jenkins-url/github-webhook/`
 4. Content type: `application/json`
 5. Events: **Just the push event**
 6. Save
 
-Now Jenkins builds automatically on push!
+#### Option 3: Manual Trigger (Current)
+
+Click **"Build Now"** in Jenkins UI after pushing code.
+
+**Pros:** Full control, works everywhere
+**Cons:** Requires manual action
+
+### Recommended Setup
+
+**For local development:** Use **SCM Polling** (Option 1)
+- Set to `H/5 * * * *` (every 5 minutes)
+- Automatic but not instant
+- No external dependencies
+
+**For production:** Use **GitHub Webhook** (Option 2)
+- Instant builds on push
+- Requires public Jenkins URL
 
 ---
 
